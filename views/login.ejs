@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login — Food Advisor</title>
+</head>
+
+<body>
+    <h1>System Login</h1>
+
+    <% if (typeof error !=='undefined' ) { %>
+        <p style="color: red;">
+            <%= error %>
+        </p>
+        <% } %>
+
+            <form action="/login" method="POST">
+                <div>
+                    <label>Email:</label><br>
+                    <input type="email" name="email" required>
+                </div>
+                <br>
+                <button type="submit">Login</button>
+            </form>
+
+            <p>Don't have an account? <a href="/register">Register</a></p>
+</body>
+
+</html>

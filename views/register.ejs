@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Register — Food Advisor</title>
+</head>
+
+<body>
+    <h1>Create a New Account</h1>
+
+    <% if (typeof error !=='undefined' ) { %>
+        <p style="color: red;">
+            <%= error %>
+        </p>
+        <% } %>
+
+            <form action="/register" method="POST">
+                <div>
+                    <label>Username:</label><br>
+                    <input type="text" name="username" required>
+                </div>
+                <br>
+                <div>
+                    <label>Email:</label><br>
+                    <input type="email" name="email" required>
+                </div>
+                <br>
+                <div>
+                    <label>Role:</label><br>
+                    <select name="role">
+                        <option value="customer">Customer</option>
+                        <option value="owner">Restaurant Owner</option>
+                    </select>
+                </div>
+                <br>
+                <button type="submit">Register</button>
+            </form>
+
+            <p>Already have an account? <a href="/login">Login</a></p>
+</body>
+
+</html>

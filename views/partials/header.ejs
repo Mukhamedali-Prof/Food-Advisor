@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Advisor</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-brand">
+            <a href="/">🍔 Food Advisor</a>
+        </div>
+
+        <nav class="nav-links">
+            <a href="/restaurants">Restaurants</a>
+
+            <% if (currentUser) { %>
+                <% if (currentUser.role==='owner' ) { %>
+                    <a href="/my-restaurants">My Restaurants</a>
+                    <% } else if (currentUser.role==='admin' ) { %>
+                        <a href="/admin">Admin Panel</a>
+                        <% } else if (currentUser.role==='customer' ) { %>
+                            <a href="/my-reviews">My Reviews</a>
+                            <% } %>
+                                <% } %>
+        </nav>
+
+        <div class="auth-links">
+            <% if (currentUser) { %>
+                <span class="user-greeting">
+                    Hi, <strong>
+                        <%= currentUser.username %>
+                    </strong>
+                    (<span class="role-badge">
+                        <%= currentUser.role %>
+                    </span>)
+                </span>
+                <a href="/logout" class="btn-logout">Logout</a>
+                <% } else { %>
+                    <a href="/login" class="btn-login">Login</a>
+                    <a href="/register" class="btn-primary">Register</a>
+                    <% } %>
+        </div>
+    </header>
+
+    <main class="container">
