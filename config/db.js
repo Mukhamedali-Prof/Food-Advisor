@@ -3,7 +3,7 @@ const mysql = require('mysql2');
 const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: '4O!lrrfsYB?~bqE',
+    password: '',
     database: 'food_advisor_db',
     waitForConnections: true,
     connectionLimit: 10,
