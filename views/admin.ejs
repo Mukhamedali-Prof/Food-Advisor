@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel — Food Advisor</title>
+</head>
+
+<body>
+    <h1>Welcome to Admin Panel, <%= currentUser.username %>
+    </h1>
+    <p>Logged in as: <strong>
+            <%= currentUser.email %>
+        </strong> | <a href="/logout">Logout</a></p>
+    <p><a href="/">← Back to Home Page</a></p>
+
+    <hr>
+    <h2>Registered Users (<%= users.length %>)</h2>
+    <ul>
+        <% users.forEach(u=> { %>
+            <li>
+                <%= u.username %> (<%= u.email %>) — Role: <strong>
+                            <%= u.role %>
+                        </strong>
+            </li>
+            <% }) %>
+    </ul>
+
+    <h2>Restaurants (<%= restaurants.length %>)</h2>
+    <ul>
+        <% restaurants.forEach(r=> { %>
+            <li>
+                <%= r.name %> — Cuisine: <%= r.cuisine %>, Rating: <%= r.rating %>
+            </li>
+            <% }) %>
+    </ul>
+
+    <h2>All Reviews (<%= reviews.length %>)</h2>
+    <ul>
+        <% reviews.forEach(rev=> { %>
+            <li><strong>
+                    <%= rev.username %>
+                </strong> on <em>
+                    <%= rev.restaurant_name %>
+                </em>: "<%= rev.comment %>" (Rating: <%= rev.rating %>)</li>
+            <% }) %>
+    </ul>
+</body>
+
+</html>

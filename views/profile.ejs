@@ -1,0 +1,161 @@
+<%- include('partials/header') %>
+
+    <div class="container" style="max-width: 1000px;">
+        <h2>Customer Dashboard</h2>
+
+        <div class="profile-layout">
+            <aside class="profile-sidebar">
+                <div class="profile-avatar-box">
+                    <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                        <img src="<%= currentUser.avatar %>" alt="Avatar" class="profile-avatar-large">
+                        <% } else { %>
+                            <div class="profile-avatar-letter">
+                                <%= currentUser.email ? currentUser.email.charAt(0) : currentUser.username.charAt(0) %>
+                            </div>
+                            <% } %>
+                                <h3 style="margin: 5px 0 0 0; color: #000;">
+                                    <%= currentUser.username %>
+                                </h3>
+                                <span class="role-badge">
+                                    <%= currentUser.role %>
+                                </span>
+                </div>
+
+                <nav class="profile-nav">
+                    <button type="button" class="profile-nav-btn active" onclick="showTab('profile-tab', this)">1.
+                        Profile Info</button>
+                    <button type="button" class="profile-nav-btn" onclick="showTab('favorites-tab', this)">2. Favorite
+                        Venues (<%= favorites.length %>)</button>
+                    <button type="button" class="profile-nav-btn" onclick="showTab('reviews-tab', this)">3. My Reviews (
+                        <%= myReviews.length %>)
+                    </button>
+                    <button type="button" class="profile-nav-btn" onclick="showTab('reservations-tab', this)">4.
+                        Bookings & Orders</button>
+                    <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">5. Security
+                        Settings</button>
+                </nav>
+            </aside>
+
+            <main class="profile-content">
+
+                <div id="profile-tab" class="tab-pane active">
+                    <h3>My Profile Details</h3>
+                    <div class="stats-container" style="margin-top: 0;">
+                        <div class="stat-box">
+                            <h3>
+                                <%= stats.ratedCount %>
+                            </h3>
+                            <p>Restaurants Rated</p>
+                        </div>
+                        <div class="stat-box">
+                            <h3>
+                                <%= favorites.length %>
+                            </h3>
+                            <p>Saved Favorites</p>
+                        </div>
+                    </div>
+
+                    <form action="/profile/update" method="POST" style="margin-top: 20px;">
+                        <div class="form-group">
+                            <label>Display Name:</label>
+                            <input type="text" name="username" value="<%= currentUser.username %>" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Avatar URL (Image Link):</label>
+                            <input type="text" name="avatar" value="<%= currentUser.avatar || '' %>"
+                                placeholder="https://example.com/photo.jpg">
+                        </div>
+
+                        <button type="submit" class="btn-primary">Save Profile Changes</button>
+                    </form>
+                </div>
+
+                <div id="favorites-tab" class="tab-pane">
+                    <h3>Saved Favorite Restaurants</h3>
+                    <% if (favorites && favorites.length> 0) { %>
+                        <div class="favorites-grid">
+                            <% favorites.forEach(r=> { %>
+                                <div class="favorite-item">
+                                    <h4>⭐ <%= r.name %>
+                                    </h4>
+                                    <p>Cuisine: <strong>
+                                            <%= r.cuisine %>
+                                        </strong> | Rating: ⭐ <%= r.rating %>
+                                    </p>
+                                    <button type="button" class="btn-secondary"
+                                        style="font-size: 0.8rem; padding: 4px 10px;">Remove from Favorites</button>
+                                </div>
+                                <% }) %>
+                        </div>
+                        <% } else { %>
+                            <p>You haven't added any restaurants to your favorites list yet.</p>
+                            <% } %>
+                </div>
+
+                <div id="reviews-tab" class="tab-pane">
+                    <h3>My Submitted Reviews</h3>
+                    <% if (myReviews && myReviews.length> 0) { %>
+                        <div class="reviews-list">
+                            <% myReviews.forEach(rev=> { %>
+                                <div class="review-item">
+                                    <div class="review-header">
+                                        <strong>
+                                            <%= rev.restaurant_name %>
+                                        </strong>
+                                        <span style="color: #f39c12;">⭐ <%= rev.rating %>/5</span>
+                                    </div>
+                                    <p>"<%= rev.comment %>"</p>
+                                    <div class="review-actions">
+                                        <button type="button" class="btn-secondary"
+                                            style="font-size: 0.8rem; padding: 4px 10px;">Edit</button>
+                                        <button type="button" class="btn-secondary"
+                                            style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
+                                    </div>
+                                </div>
+                                <% }) %>
+                        </div>
+                        <% } else { %>
+                            <p>You haven't submitted any dining reviews yet.</p>
+                            <% } %>
+                </div>
+
+                <div id="reservations-tab" class="tab-pane">
+                    <h3>Table Bookings & Orders</h3>
+                    <p>Track your active bookings and dining history.</p>
+                    <div class="role-card" style="border-left-color: #ffc800;">
+                        <p>No active table reservations found.</p>
+                    </div>
+                </div>
+
+                <div id="security-tab" class="tab-pane">
+                    <h3>Security & Password Settings</h3>
+                    <form action="/profile/security" method="POST">
+                        <div class="form-group">
+                            <label>Account Email:</label>
+                            <input type="email" value="<%= currentUser.email %>" disabled readonly
+                                style="opacity: 0.7;">
+                        </div>
+                        <div class="form-group">
+                            <label>New Password:</label>
+                            <input type="password" name="new_password" placeholder="Enter new password">
+                        </div>
+                        <button type="submit" class="btn-primary">Update Security Settings</button>
+                    </form>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+    </script>
+
+    <%- include('partials/footer') %>

@@ -1,0 +1,35 @@
+<%- include('partials/header') %>
+
+    <div class="container" style="max-width: 500px;">
+        <h2>Admin Portal Login</h2>
+        <p>Restricted access area for system administrators.</p>
+
+        <% if (typeof error !=='undefined' && error) { %>
+            <div class="form-error">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form action="/admin" method="POST">
+                    <div class="form-group">
+                        <label>Admin Email:</label>
+                        <input type="email" name="email" required placeholder="admin@foodadvisor.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" name="password" required placeholder="Admin password">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit" style="background-color: #ff4757;">Log In as
+                            Admin</button>
+                    </div>
+                </form>
+
+                <div class="form-footer-link">
+                    <p><a href="/">← Back to Home Page</a></p>
+                </div>
+    </div>
+
+    <%- include('partials/footer') %>

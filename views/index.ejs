@@ -6,8 +6,8 @@
             <p>Discover top-rated restaurants, explore delicious menus, submit reviews, and manage dining places
                 effortlessly.</p>
             <div class="hero-actions">
-                <a href="/login" class="btn-login">Login</a>
-                <a href="/register" class="btn-primary">Register Now</a>
+                <button type="button" class="btn-secondary" onclick="openModal('loginModal')">Login</button>
+                <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register Now</button>
             </div>
         </div>
         <% } else { %>
@@ -88,26 +88,6 @@
                                         </ul>
                                         <% } else { %>
                                             <p>No reviews submitted yet.</p>
-                                            <% } %>
-                                </div>
-
-                                <div class="content-section">
-                                    <h3>Registered Users</h3>
-                                    <% if (users && users.length> 0) { %>
-                                        <ul class="users-list">
-                                            <% users.forEach(user=> { %>
-                                                <li>
-                                                    <span><strong>
-                                                            <%= user.username %>
-                                                        </strong> (<%= user.email %>)</span>
-                                                    <span class="role-badge">
-                                                        <%= user.role %>
-                                                    </span>
-                                                </li>
-                                                <% }) %>
-                                        </ul>
-                                        <% } else { %>
-                                            <p>No registered users found.</p>
                                             <% } %>
                                 </div>
 
