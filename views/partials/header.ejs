@@ -17,10 +17,9 @@
 
         <nav class="nav-links">
             <a href="/restaurants">Restaurants</a>
-
-            <% if (currentUser) { %>
+            <% if (typeof currentUser !=='undefined' && currentUser) { %>
                 <% if (currentUser.role==='owner' ) { %>
-                    <a href="/my-restaurants">My Restaurants</a>
+                    <a href="/owner-dashboard">Owner Dashboard</a>
                     <% } else if (currentUser.role==='admin' ) { %>
                         <a href="/admin">Admin Panel</a>
                         <% } else if (currentUser.role==='customer' ) { %>
@@ -30,16 +29,8 @@
         </nav>
 
         <div class="auth-links">
-            <% if (currentUser) { %>
-                <a href="/profile" class="user-avatar-link" title="Go to Profile">
-                    <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
-                        <img src="<%= currentUser.avatar %>" alt="<%= currentUser.username %>" class="user-avatar">
-                        <% } else { %>
-                            <div class="user-avatar-letter">
-                                <%= currentUser.email ? currentUser.email.charAt(0) : currentUser.username.charAt(0) %>
-                            </div>
-                            <% } %>
-                </a>
+            <% if (typeof currentUser !=='undefined' && currentUser) { %>
+                <!-- Аватарка скрыта из шапки по вашему требованию, оставлена только кнопка Logout -->
                 <a href="/logout" class="btn-logout">Logout</a>
                 <% } else { %>
                     <button type="button" class="btn-login" onclick="openModal('loginModal')">Login</button>

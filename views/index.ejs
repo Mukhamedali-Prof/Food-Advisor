@@ -1,94 +1,98 @@
 <%- include('partials/header') %>
 
-    <% if (!currentUser) { %>
-        <div class="hero-section">
-            <h2>Welcome to the Food Advisor App!</h2>
-            <p>Discover top-rated restaurants, explore delicious menus, submit reviews, and manage dining places
-                effortlessly.</p>
-            <div class="hero-actions">
-                <button type="button" class="btn-secondary" onclick="openModal('loginModal')">Login</button>
-                <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register Now</button>
-            </div>
-        </div>
-        <% } else { %>
-            <h2>Dashboard</h2>
-
-            <% if (currentUser.role==='customer' ) { %>
-                <div class="role-card">
-                    <h3>Customer Panel</h3>
-                    <p>You can search for restaurants, view menus, and submit food reviews.</p>
-                </div>
-                <% } else if (currentUser.role==='owner' ) { %>
-                    <div class="role-card" style="border-left-color: #2ed573;">
-                        <h3>Restaurant Owner Panel</h3>
-                        <p>Here you can add your restaurants and manage their menus.</p>
+    <div class="container" style="max-width: 1000px;">
+        <div class="dashboard-card-wrapper">
+            <% if (!currentUser) { %>
+                <div class="hero-section">
+                    <h2>Welcome to the Food Advisor App!</h2>
+                    <p>Discover top-rated restaurants, explore delicious menus, submit reviews, and manage dining places
+                        effortlessly.</p>
+                    <div class="hero-actions">
+                        <button type="button" class="btn-secondary" onclick="openModal('loginModal')">Login</button>
+                        <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register
+                            Now</button>
                     </div>
-                    <% } else if (currentUser.role==='admin' ) { %>
-                        <div class="role-card" style="border-left-color: #3742fa;">
-                            <h3>Administrator Panel</h3>
-                            <p>You have full control over users and review moderation.</p>
+                </div>
+                <% } else { %>
+                    <h2>Dashboard</h2>
+                    <% if (currentUser.role==='customer' ) { %>
+                        <div class="role-card">
+                            <h3>Customer Panel</h3>
+                            <p>You can search for restaurants, view menus, and submit food reviews.</p>
                         </div>
-                        <% } %>
-                            <% } %>
-
-                                <div class="stats-container">
-                                    <div class="stat-box">
-                                        <h3>
-                                            <%= stats.restaurantsCount %>
-                                        </h3>
-                                        <p>Restaurants</p>
-                                    </div>
-                                    <div class="stat-box">
-                                        <h3>
-                                            <%= stats.usersCount %>
-                                        </h3>
-                                        <p>Users</p>
-                                    </div>
-                                    <div class="stat-box">
-                                        <h3>
-                                            <%= stats.reviewsCount %>
-                                        </h3>
-                                        <p>Reviews</p>
-                                    </div>
+                        <% } else if (currentUser.role==='owner' ) { %>
+                            <div class="role-card" style="border-left-color: #2ed573;">
+                                <h3>Restaurant Owner Panel</h3>
+                                <p>Here you can add your restaurants and manage their menus.</p>
+                            </div>
+                            <% } else if (currentUser.role==='admin' ) { %>
+                                <div class="role-card" style="border-left-color: #3742fa;">
+                                    <h3>Administrator Panel</h3>
+                                    <p>You have full control over users and review moderation.</p>
                                 </div>
+                                <% } %>
+                                    <% } %>
 
-                                <div class="content-section">
-                                    <h3>Top Rated Restaurants</h3>
-                                    <% if (topRestaurants && topRestaurants.length> 0) { %>
-                                        <ul class="simple-list">
-                                            <% topRestaurants.forEach(restaurant=> { %>
-                                                <li>
-                                                    <strong>
-                                                        <%= restaurant.name %>
-                                                    </strong>
-                                                    <span>
-                                                        <%= restaurant.cuisine %> — ⭐ <%= restaurant.rating %>
-                                                    </span>
-                                                </li>
-                                                <% }) %>
-                                        </ul>
-                                        <% } else { %>
-                                            <p>No restaurants added yet.</p>
-                                            <% } %>
-                                </div>
+                                        <div class="stats-container">
+                                            <div class="stat-box">
+                                                <h3>
+                                                    <%= stats.restaurantsCount %>
+                                                </h3>
+                                                <p>Restaurants</p>
+                                            </div>
+                                            <div class="stat-box">
+                                                <h3>
+                                                    <%= stats.usersCount %>
+                                                </h3>
+                                                <p>Users</p>
+                                            </div>
+                                            <div class="stat-box">
+                                                <h3>
+                                                    <%= stats.reviewsCount %>
+                                                </h3>
+                                                <p>Reviews</p>
+                                            </div>
+                                        </div>
 
-                                <div class="content-section">
-                                    <h3>Recent Customer Reviews</h3>
-                                    <% if (recentReviews && recentReviews.length> 0) { %>
-                                        <ul class="simple-list">
-                                            <% recentReviews.forEach(review=> { %>
-                                                <li>
-                                                    <strong>
-                                                        <%= review.restaurant_name %>
-                                                    </strong> (by <%= review.username %>)<br>
-                                                        <span style="color: #f39c12;">⭐ <%= review.rating %>/5</span> —
-                                                        "<%= review.comment %>"
-                                                </li>
-                                                <% }) %>
-                                        </ul>
-                                        <% } else { %>
-                                            <p>No reviews submitted yet.</p>
-                                            <% } %>
-                                </div>
+                                        <div class="content-section">
+                                            <h3>Top Rated Restaurants</h3>
+                                            <% if (topRestaurants && topRestaurants.length> 0) { %>
+                                                <ul class="simple-list">
+                                                    <% topRestaurants.forEach(restaurant=> { %>
+                                                        <li>
+                                                            <strong>
+                                                                <%= restaurant.name %>
+                                                            </strong>
+                                                            <span>
+                                                                <%= restaurant.cuisine %> — ⭐ <%= restaurant.rating %>
+                                                            </span>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <p>No restaurants added yet.</p>
+                                                    <% } %>
+                                        </div>
 
-                                <%- include('partials/footer') %>
+                                        <div class="content-section">
+                                            <h3>Recent Customer Reviews</h3>
+                                            <% if (recentReviews && recentReviews.length> 0) { %>
+                                                <ul class="simple-list">
+                                                    <% recentReviews.forEach(review=> { %>
+                                                        <li>
+                                                            <strong>
+                                                                <%= review.restaurant_name %>
+                                                            </strong> (by <%= review.username %>)<br>
+                                                                <span style="color: #f39c12;">⭐ <%= review.rating %>
+                                                                        /5</span> — "<%= review.comment %>"
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <p>No reviews submitted yet.</p>
+                                                    <% } %>
+                                        </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>

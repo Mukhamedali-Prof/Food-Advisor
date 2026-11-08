@@ -1,0 +1,165 @@
+<%- include('partials/header') %>
+
+    <div class="container" style="max-width: 1000px;">
+        <div class="dashboard-card-wrapper">
+            <h2>Restaurant Owner Dashboard</h2>
+
+            <div class="profile-layout">
+                <aside class="profile-sidebar">
+                    <div class="profile-avatar-box">
+                        <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                            <img src="<%= currentUser.avatar %>" alt="Avatar" class="profile-avatar-large">
+                            <% } else { %>
+                                <div class="profile-avatar-letter">
+                                    <%= currentUser.email ? currentUser.email.charAt(0) : currentUser.username.charAt(0)
+                                        %>
+                                </div>
+                                <% } %>
+                                    <h3 style="margin: 5px 0 0 0; color: #000;">
+                                        <%= currentUser.username %>
+                                    </h3>
+                                    <span class="role-badge">
+                                        Restaurant Owner
+                                    </span>
+                    </div>
+
+                    <nav class="profile-nav">
+                        <button type="button" class="profile-nav-btn active"
+                            onclick="showTab('profile-tab', this)">Profile Info</button>
+                        <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">My
+                            Restaurants (<%= myRestaurants.length %>)</button>
+                        <button type="button" class="profile-nav-btn" onclick="showTab('add-restaurant-tab', this)">Add
+                            Restaurant</button>
+                        <button type="button" class="profile-nav-btn"
+                            onclick="showTab('reservations-tab', this)">Bookings & Orders</button>
+                        <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">Security
+                            Settings</button>
+                    </nav>
+                </aside>
+
+                <main class="profile-content">
+                    <div id="profile-tab" class="tab-pane active">
+                        <h3>Owner Profile Details</h3>
+                        <div class="stats-container" style="margin-top: 0;">
+                            <div class="stat-box">
+                                <h3>
+                                    <%= stats.restaurantsCount %>
+                                </h3>
+                                <p>Active Restaurants</p>
+                            </div>
+                        </div>
+
+                        <form action="/profile/update" method="POST" enctype="multipart/form-data"
+                            style="margin-top: 20px;">
+                            <div class="form-group">
+                                <label>Display Name:</label>
+                                <input type="text" name="username" value="<%= currentUser.username %>" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Upload New Avatar from Device:</label>
+                                <input type="file" name="avatarFile" accept="image/*"
+                                    style="padding: 8px 0; border: none; background: transparent;">
+                                <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
+                                    PNG, WEBP</small>
+                            </div>
+
+                            <button type="submit" class="btn-primary">Save Profile Changes</button>
+                        </form>
+                    </div>
+
+                    <div id="restaurants-tab" class="tab-pane">
+                        <h3>My Managed Restaurants</h3>
+                        <% if (myRestaurants && myRestaurants.length> 0) { %>
+                            <div class="favorites-grid">
+                                <% myRestaurants.forEach(r=> { %>
+                                    <div class="favorite-item">
+                                        <h4>🍽️ <%= r.name %>
+                                        </h4>
+                                        <p>Cuisine: <strong>
+                                                <%= r.cuisine %>
+                                            </strong> | Rating: ⭐ <%= r.rating %>
+                                        </p>
+                                        <p style="font-size: 0.85rem; color: #666;">
+                                            <%= r.address %>
+                                        </p>
+                                        <button type="button" class="btn-secondary"
+                                            style="font-size: 0.8rem; padding: 4px 10px; margin-top: 5px;">Manage
+                                            Menu</button>
+                                    </div>
+                                    <% }) %>
+                            </div>
+                            <% } else { %>
+                                <p>You haven't added any restaurants yet. Use the "Add Restaurant" tab to create one.
+                                </p>
+                                <% } %>
+                    </div>
+
+                    <div id="add-restaurant-tab" class="tab-pane">
+                        <h3>Add New Restaurant</h3>
+                        <form action="/owner/restaurants/add" method="POST" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Restaurant Name:</label>
+                                <input type="text" name="name" placeholder="e.g. Papa's Pizza" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Cuisine Type:</label>
+                                <input type="text" name="cuisine" placeholder="e.g. Italian, Fast Food" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Address:</label>
+                                <input type="text" name="address" placeholder="e.g. Abaya st. 45" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Description:</label>
+                                <textarea name="description" rows="3" placeholder="Brief description of your venue"
+                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Image URL (Optional):</label>
+                                <input type="text" name="image" placeholder="/uploads/restaurant.jpg">
+                            </div>
+                            <button type="submit" class="btn-primary">Publish Restaurant</button>
+                        </form>
+                    </div>
+
+                    <div id="reservations-tab" class="tab-pane">
+                        <h3>Incoming Bookings & Orders</h3>
+                        <p>Track table reservations and customer orders for your venues.</p>
+                        <div class="role-card" style="border-left-color: #ffc800;">
+                            <p>No incoming reservations at the moment.</p>
+                        </div>
+                    </div>
+
+                    <div id="security-tab" class="tab-pane">
+                        <h3>Security & Password Settings</h3>
+                        <form action="/profile/security" method="POST" class="security-form">
+                            <div class="form-group">
+                                <label>Account Email:</label>
+                                <input type="email" value="<%= currentUser.email %>" disabled
+                                    style="background-color: #e9ecef; cursor: not-allowed;">
+                            </div>
+
+                            <div class="form-group">
+                                <label>New Password:</label>
+                                <input type="password" name="newPassword" placeholder="Enter new password" required>
+                            </div>
+
+                            <button type="submit" class="btn-primary">Update Security Settings</button>
+                        </form>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+    </script>
+
+    <%- include('partials/footer') %>

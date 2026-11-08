@@ -1,35 +1,32 @@
 <%- include('partials/header') %>
 
-    <div class="container" style="max-width: 500px;">
-        <h2>Admin Portal Login</h2>
-        <p>Restricted access area for system administrators.</p>
+    <div class="container" style="max-width: 500px; margin-top: 60px !important;">
+        <div class="dashboard-card-wrapper" style="text-align: center;">
+            <h2>Admin Portal Login</h2>
+            <p style="color: #666; margin-bottom: 20px;">Restricted access. Authorized personnel only.</p>
 
-        <% if (typeof error !=='undefined' && error) { %>
-            <div class="form-error">
-                <%= error %>
-            </div>
-            <% } %>
-
-                <form action="/admin" method="POST">
-                    <div class="form-group">
-                        <label>Admin Email:</label>
-                        <input type="email" name="email" required placeholder="admin@foodadvisor.com">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Password:</label>
-                        <input type="password" name="password" required placeholder="Admin password">
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="btn-submit" style="background-color: #ff4757;">Log In as
-                            Admin</button>
-                    </div>
-                </form>
-
-                <div class="form-footer-link">
-                    <p><a href="/">← Back to Home Page</a></p>
+            <% if (typeof error !=='undefined' && error) { %>
+                <div
+                    style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9rem;">
+                    <%= error %>
                 </div>
+                <% } %>
+
+                    <form action="/admin" method="POST" style="text-align: left;">
+                        <div class="form-group">
+                            <label>Admin Email:</label>
+                            <input type="email" name="email" required placeholder="admin@foodadvisor.com"
+                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Password:</label>
+                            <input type="password" name="password" required placeholder="Enter password"
+                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Authenticate
+                            Admin</button>
+                    </form>
+        </div>
     </div>
 
     <%- include('partials/footer') %>
