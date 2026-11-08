@@ -30,7 +30,6 @@
 
         <div class="auth-links">
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
-                <!-- Аватарка скрыта из шапки по вашему требованию, оставлена только кнопка Logout -->
                 <a href="/logout" class="btn-logout">Logout</a>
                 <% } else { %>
                     <button type="button" class="btn-login" onclick="openModal('loginModal')">Login</button>
