@@ -30,11 +30,23 @@
 
         <div class="auth-links">
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
-                <a href="/logout" class="btn-logout">Logout</a>
-                <% } else { %>
-                    <button type="button" class="btn-login" onclick="openModal('loginModal')">Login</button>
-                    <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register Now</button>
-                    <% } %>
+                <% const profileLink=(currentUser.role==='owner' ) ? '/owner-dashboard' : (currentUser.role==='admin'
+                    ? '/admin' : '/profile' ); %>
+                    <a href="<%= profileLink %>" class="user-avatar-link" title="Go to Profile">
+                        <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                            <img src="<%= currentUser.avatar %>" alt="<%= currentUser.username %>" class="user-avatar">
+                            <% } else { %>
+                                <div class="user-avatar-letter">
+                                    <%= currentUser.email ? currentUser.email.charAt(0) : currentUser.username.charAt(0)
+                                        %>
+                                </div>
+                                <% } %>
+                    </a>
+                    <% } else { %>
+                        <button type="button" class="btn-login" onclick="openModal('loginModal')">Login</button>
+                        <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register
+                            Now</button>
+                        <% } %>
         </div>
     </header>
 
