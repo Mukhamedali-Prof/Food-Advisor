@@ -544,8 +544,81 @@ app.post('/admin/reviews/delete/:id', async (req, res) => {
     }
 });
 
+app.get('/search', async (req, res) => {
+    try {
+        const rawQuery = req.query.query || '';
+        const searchQuery = `%${rawQuery.trim()}%`;
+        const selectedCuisine = req.query.cuisine || '';
+
+        let sql = 'SELECT * FROM restaurants WHERE is_hidden = 0 AND name LIKE ?';
+        let params = [searchQuery];
+
+        if (selectedCuisine) {
+            sql += ' AND cuisine = ?';
+            params.push(selectedCuisine);
+        }
+
+        const [restaurants] = await db.query(sql, params);
+
+        const [cuisines] = await db.query('SELECT DISTINCT cuisine FROM restaurants WHERE is_hidden = 0');
+
+        let currentUser = null;
+        if (req.cookies && req.cookies.user_email) {
+            const [users] = await db.query('SELECT * FROM users WHERE email = ?', [req.cookies.user_email]);
+            if (users.length > 0) currentUser = users[0];
+        }
+
+        res.render('search-results', {
+            restaurants,
+            cuisines,
+            searchQuery: rawQuery,
+            selectedCuisine,
+            currentUser
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+});
+
+app.get('/restaurant/:id', async (req, res) => {
+    try {
+        const restaurantId = req.params.id;
+
+        const [restaurants] = await db.query('SELECT * FROM restaurants WHERE id = ?', [restaurantId]);
+        if (!restaurants || restaurants.length === 0) {
+            return res.status(404).send('Restaurant not found');
+        }
+        const restaurant = restaurants[0];
+
+        const [reviews] = await db.query(`
+            SELECT reviews.*, users.username 
+            FROM reviews 
+            JOIN users ON reviews.user_id = users.id 
+            WHERE restaurant_id = ? AND reviews.is_hidden = 0
+            ORDER BY reviews.id DESC
+        `, [restaurantId]);
+
+        let currentUser = null;
+        if (req.cookies && req.cookies.user_email) {
+            const [users] = await db.query('SELECT * FROM users WHERE email = ?', [req.cookies.user_email]);
+            if (users.length > 0) {
+                currentUser = users[0];
+            }
+        }
+
+        res.render('restaurant-detail', {
+            restaurant: restaurant,
+            reviews: reviews || [],
+            currentUser: currentUser
+        });
+
+    } catch (err) {
+        console.error('Error fetching restaurant details:', err);
+        res.status(500).send('Server Error: ' + err.message);
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running at: http://localhost:${PORT}`);
 });
-
-// TEst commit

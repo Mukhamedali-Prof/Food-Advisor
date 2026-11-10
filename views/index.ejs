@@ -7,10 +7,21 @@
                     <h2>Welcome to the Food Advisor App!</h2>
                     <p>Discover top-rated restaurants, explore delicious menus, submit reviews, and manage dining places
                         effortlessly.</p>
+
+                    <form action="/search" method="GET" class="hero-search-form">
+                        <div class="search-input-group">
+                            <input type="text" name="query" placeholder="Search by restaurant name, cuisine..."
+                                required>
+                            <button type="submit" class="btn-primary">Search</button>
+                        </div>
+                    </form>
+
                     <div class="hero-actions">
-                        <button type="button" class="btn-secondary" onclick="openModal('loginModal')">Login</button>
-                        <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register
-                            Now</button>
+                        <% if (typeof currentUser==='undefined' || !currentUser) { %>
+                            <button type="button" class="btn-login" onclick="openModal('loginModal')">Login</button>
+                            <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register
+                                Now</button>
+                            <% } %>
                     </div>
                 </div>
                 <% } else { %>

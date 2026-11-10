@@ -10,25 +10,36 @@
 
 <body>
 
-    <header>
+    <header class="site-header">
         <div class="nav-brand">
             <a href="/">Food Advisor</a>
         </div>
 
+        <form action="/search" method="GET" class="header-search-form">
+            <input type="text" name="query" placeholder="Quick search restaurants..." required>
+            <button type="submit" class="header-search-btn">🔍</button>
+        </form>
+
         <nav class="nav-links">
-            <a href="/restaurants">Restaurants</a>
+            <a href="/search">All Restaurants</a>
+
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
                 <% if (currentUser.role==='owner' ) { %>
-                    <a href="/owner-dashboard">Owner Dashboard</a>
+                    <a href="/owner-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
                     <% } else if (currentUser.role==='admin' ) { %>
-                        <a href="/admin">Admin Panel</a>
+                        <a href="/admin-notifications" class="nav-badge-link" title="System Alerts">Notifications</a>
                         <% } else if (currentUser.role==='customer' ) { %>
                             <a href="/my-reviews">My Reviews</a>
+                            <a href="/favorites" title="My Favorites">Favorites</a>
                             <% } %>
                                 <% } %>
         </nav>
 
         <div class="auth-links">
+            <button type="button" id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
+                <img id="themeIcon" src="/images/Light%20Mode.png" alt="Theme" class="theme-icon">
+            </button>
+
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
                 <% const profileLink=(currentUser.role==='owner' ) ? '/owner-dashboard' : (currentUser.role==='admin'
                     ? '/admin' : '/profile' ); %>
@@ -49,6 +60,29 @@
                         <% } %>
         </div>
     </header>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeBtn = document.getElementById('themeToggleBtn');
+            const themeIcon = document.getElementById('themeIcon');
+            const currentTheme = localStorage.getItem('theme') || 'light';
+
+            if (currentTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                themeIcon.src = '/images/Dark%20Mode.png';
+            } else {
+                themeIcon.src = '/images/Light%20Mode.png';
+            }
+
+            themeBtn.addEventListener('click', () => {
+                document.body.classList.toggle('dark-theme');
+                const isDark = document.body.classList.contains('dark-theme');
+
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                themeIcon.src = isDark ? '/images/Dark%20Mode.png' : '/images/Light%20Mode.png';
+            });
+        });
+    </script>
 
     <div id="loginModal" class="modal-overlay">
         <div class="modal-content">

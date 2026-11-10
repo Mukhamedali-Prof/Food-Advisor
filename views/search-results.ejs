@@ -1,0 +1,80 @@
+<%- include('partials/header') %>
+
+    <div class="container">
+        <div class="dashboard-card-wrapper">
+            <h2>Restaurants</h2>
+
+            <div class="search-page-layout">
+                <aside class="filters-sidebar">
+                    <h3>Filters</h3>
+                    <form action="/search" method="GET">
+                        <div class="form-group">
+                            <label>Restaurant Name</label>
+                            <input type="text" name="query" value="<%= searchQuery %>" placeholder="Name...">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Cuisine / Style</label>
+                            <select name="cuisine">
+                                <option value="">All Cuisines</option>
+                                <% if (typeof cuisines !=='undefined' ) { %>
+                                    <% cuisines.forEach(c=> { %>
+                                        <option value="<%= c.cuisine %>" <%=selectedCuisine===c.cuisine ? 'selected'
+                                            : '' %>><%= c.cuisine %>
+                                        </option>
+                                        <% }) %>
+                                            <% } %>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Price Range</label>
+                            <select name="price">
+                                <option value="">Any</option>
+                                <option value="low">$ (Budget)</option>
+                                <option value="mid">$$ (Moderate)</option>
+                                <option value="high">$$$ (Fine Dining)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="width: 100%;">Apply Filters</button>
+                    </form>
+                </aside>
+
+                <main class="results-content">
+                    <% if (restaurants && restaurants.length> 0) { %>
+                        <div class="restaurants-grid">
+                            <% restaurants.forEach(r=> { %>
+                                <div class="restaurant-card" onclick="window.location.href='/restaurant/<%= r.id %>'">
+                                    <div class="restaurant-image-wrapper">
+                                        <img src="<%= r.image && r.image.trim() !== '' ? r.image : '/images/No image.png' %>"
+                                            alt="<%= r.name %>" class="restaurant-thumb">
+                                    </div>
+                                    <div class="restaurant-info">
+                                        <h3>
+                                            <%= r.name %>
+                                        </h3>
+                                        <p class="restaurant-cuisine"><strong>Cuisine:</strong>
+                                            <%= r.cuisine %>
+                                        </p>
+                                        <p class="restaurant-address"><strong>Address:</strong>
+                                            <%= r.address %>
+                                        </p>
+                                        <div class="restaurant-rating">
+                                            <span class="star">⭐</span> <strong>
+                                                <%= r.rating %>
+                                            </strong> / 5.0
+                                        </div>
+                                    </div>
+                                </div>
+                                <% }) %>
+                        </div>
+                        <% } else { %>
+                            <p>No restaurants found matching your criteria.</p>
+                            <% } %>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
