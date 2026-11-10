@@ -6,30 +6,9 @@
             <div class="restaurant-detail-header">
                 <div class="detail-image-container">
                     <div class="detail-image-wrapper">
-                        <img id="restaurantMainImg"
-                            src="<%= (restaurant.image && restaurant.image.trim() !== '') ? restaurant.image : '/images/No%20image.png' %>"
+                        <img src="<%= restaurant.image ? restaurant.image : '/images/No%20image.png' %>"
                             alt="<%= restaurant.name %>" class="detail-thumb">
                     </div>
-
-                    <% let imgList=[]; if (restaurant.image && restaurant.image.trim() !=='' ) {
-                        imgList.push(restaurant.image); } if (restaurant.images) { const extraImgs=typeof
-                        restaurant.images==='string' ? restaurant.images.split(',').map(s=> s.trim()) :
-                        restaurant.images;
-                        imgList = [...new Set([...imgList, ...extraImgs])];
-                        }
-                        if (imgList.length === 0) {
-                        imgList = ['/images/no-photo.jpg'];
-                        }
-                        imgList = imgList.slice(0, 10);
-                        %>
-
-                        <% if (imgList.length> 1) { %>
-                            <div class="gallery-controls">
-                                <button type="button" id="prevImgBtn" class="gallery-btn">❮ Prev</button>
-                                <span id="galleryCounter">1 / <%= imgList.length %></span>
-                                <button type="button" id="nextImgBtn" class="gallery-btn">Next ❯</button>
-                            </div>
-                            <% } %>
                 </div>
 
                 <div class="detail-info">
@@ -38,8 +17,8 @@
                     </h2>
 
                     <div class="meta-tags">
-                        <span class="badge-cuisine">🍽️ <%= restaurant.cuisine %></span>
-                        <span class="badge-rating">⭐ <%= restaurant.rating || 'New' %> / 5.0</span>
+                        <span class="badge-cuisine">Cuisine: <%= restaurant.cuisine %></span>
+                        <span class="badge-rating">Rating: <%= restaurant.rating || 'New' %> / 5.0</span>
                     </div>
 
                     <div class="info-row">
@@ -53,236 +32,97 @@
                     </div>
 
                     <% if (restaurant.description) { %>
-                        <div class="info-row short-desc-box">
-                            <p>
-                                <%= restaurant.description.length> 140 ? restaurant.description.substring(0, 140) +
-                                    '...' : restaurant.description %>
-                            </p>
-                        </div>
-                        <% } %>
-                </div>
-            </div>
-
-            <div class="restaurant-tabs">
-                <button type="button" class="tab-btn active" onclick="switchTab(event, 'tab-booking')">Book
-                    Table</button>
-                <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-overview')">Overview &
-                    Contacts</button>
-                <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-menu')">Menu</button>
-                <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-reviews')">Reviews</button>
-                <button type="button" class="tab-btn" onclick="switchTab(event, 'tab-events')">Private Events</button>
-            </div>
-
-            <div class="tab-content-container">
-
-                <div id="tab-booking" class="tab-pane active">
-                    <h3>Table Reservation</h3>
-                    <p>Book your table in advance to guarantee the best experience.</p>
-                    <form action="/restaurant/<%= restaurant.id %>/book" method="POST" class="booking-form">
-                        <div class="form-group">
-                            <label>Date:</label>
-                            <input type="date" name="book_date" required class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label>Start Time:</label>
-                            <input type="time" name="start_time" required class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label>End Time:</label>
-                            <input type="time" name="end_time" required class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label>Guests Count:</label>
-                            <input type="number" name="guests" min="1" max="20" value="2" required class="form-control">
-                        </div>
-                        <div class="form-actions-right">
-                            <button type="submit" class="btn-primary">Confirm Booking</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div id="tab-overview" class="tab-pane">
-                    <div class="overview-section-box">
-                        <h3>About Restaurant</h3>
-                        <% if (restaurant.description && restaurant.description.trim() !=='' ) { %>
-                            <p class="description-text">
+                        <div class="info-row">
+                            <p><strong>Description:</strong>
                                 <%= restaurant.description %>
                             </p>
-                            <% } else { %>
-                                <div class="notice-box">
-                                    <p>No description has been provided for this restaurant yet.</p>
-                                </div>
-                                <% } %>
-
-                                    <div class="overview-details-grid">
-                                        <div class="overview-item">
-                                            <strong>Full Address:</strong>
-                                            <span>
-                                                <%= restaurant.address %>
-                                            </span>
-                                        </div>
-                                        <div class="overview-item">
-                                            <strong>Cuisine Type:</strong>
-                                            <span>
-                                                <%= restaurant.cuisine %>
-                                            </span>
-                                        </div>
-                                        <div class="overview-item">
-                                            <strong>Support Email:</strong>
-                                            <span>support@foodadvisor.com</span>
-                                        </div>
-                                    </div>
-                    </div>
-                </div>
-
-                <div id="tab-menu" class="tab-pane">
-                    <h3>Restaurant Menu</h3>
-                    <p>Explore our signature dishes and beverages.</p>
-                    <div class="menu-placeholder-grid">
-                        <div class="menu-item-card">
-                            <h4>Signature Pasta</h4>
-                            <p>Fresh handmade pasta with truffle sauce.</p>
-                            <span class="price">$18.99</span>
-                        </div>
-                        <div class="menu-item-card">
-                            <h4>Italian Bruschetta</h4>
-                            <p>Grilled bread with tomatoes, garlic, and basil.</p>
-                            <span class="price">$8.50</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="tab-reviews" class="tab-pane">
-                    <div class="reviews-header-flex">
-                        <h3>Customer Reviews (<%= reviews.length %>)</h3>
-                        <% if (currentUser && currentUser.role==='customer' ) { %>
-                            <button type="button" class="btn-primary" onclick="openModal('addReviewModal')">+ Write a
-                                Review</button>
-                            <% } %>
-                    </div>
-
-                    <% if (reviews && reviews.length> 0) { %>
-                        <div class="reviews-list">
-                            <% reviews.forEach(rev=> { %>
-                                <div class="review-card">
-                                    <div class="review-meta">
-                                        <strong>
-                                            <%= rev.username %>
-                                        </strong>
-                                        <span class="review-rating">⭐ <%= rev.rating %> / 5</span>
-                                    </div>
-                                    <p class="review-comment">
-                                        <%= rev.comment %>
-                                    </p>
-                                    <small class="review-date">
-                                        <%= rev.created_at ? new Date(rev.created_at).toLocaleDateString() : '' %>
-                                    </small>
-                                </div>
-                                <% }) %>
                         </div>
                         <% } else { %>
-                            <p class="no-reviews">No reviews yet. Be the first to share your experience!</p>
+                            <div class="info-row">
+                                <p><em>No description provided yet.</em></p>
+                            </div>
                             <% } %>
                 </div>
-
-                <div id="tab-events" class="tab-pane">
-                    <h3>Private Events & Banquets</h3>
-                    <p>Looking to host a private party, corporate dinner, or celebration? We offer customized menus and
-                        dedicated staff for groups up to 50 people.</p>
-                    <p><strong>Contact us for booking:</strong> events@foodadvisor.com</p>
-                </div>
-
             </div>
 
-            <div class="detail-actions" style="margin-top: 30px;">
+            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
+
+            <div class="section-block">
+                <h3>Table Reservation</h3>
+                <form action="/restaurant/<%= restaurant.id %>/book" method="POST" class="booking-form">
+                    <div class="form-group">
+                        <label>Date:</label>
+                        <input type="date" name="book_date" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Start Time:</label>
+                        <input type="time" name="start_time" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time:</label>
+                        <input type="time" name="end_time" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Guests Count:</label>
+                        <input type="number" name="guests" min="1" max="20" value="2" required class="form-control">
+                    </div>
+                    <button type="submit" class="btn-primary">Confirm Booking</button>
+                </form>
+            </div>
+
+            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
+
+            <div class="section-block">
+                <h3>Menu</h3>
+                <ul>
+                    <li>Signature Pasta - $18.99</li>
+                    <li>Italian Bruschetta - $8.50</li>
+                </ul>
+            </div>
+
+            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
+
+            <div class="section-block">
+                <h3>Customer Reviews (<%= reviews.length %>)</h3>
+
+                <% if (reviews && reviews.length> 0) { %>
+                    <% reviews.forEach(function(rev) { %>
+                        <div class="review-card"
+                            style="border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+                            <strong>
+                                <%= rev.username %>
+                            </strong> — Rating: <%= rev.rating %> / 5
+                                <p>
+                                    <%= rev.comment %>
+                                </p>
+                        </div>
+                        <% }) %>
+                            <% } else { %>
+                                <p>No reviews yet. Be the first to share your experience!</p>
+                                <% } %>
+
+                                    <% if (currentUser && currentUser.role==='customer' ) { %>
+                                        <h4 style="margin-top: 20px;">Write a Review</h4>
+                                        <form action="/restaurant/<%= restaurant.id %>/review" method="POST">
+                                            <div class="form-group">
+                                                <label>Rating (1 to 5):</label>
+                                                <input type="number" name="rating" min="1" max="5" required
+                                                    class="form-control">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Comment:</label>
+                                                <textarea name="comment" rows="3" required
+                                                    class="form-control"></textarea>
+                                            </div>
+                                            <button type="submit" class="btn-primary">Submit Review</>
+                                        </form>
+                                        <% } %>
+            </div>
+
+            <div style="margin-top: 30px;">
                 <a href="/search" class="btn-primary">← Back to Search</a>
             </div>
         </div>
     </div>
 
-    <% if (currentUser && currentUser.role==='customer' ) { %>
-        <div id="addReviewModal" class="modal-overlay">
-            <div class="modal-content">
-                <button type="button" class="modal-close" onclick="closeModal('addReviewModal')">&times;</button>
-                <h2>Write a Review</h2>
-                <p>Share your experience at <%= restaurant.name %>
-                </p>
-
-                <form action="/restaurant/<%= restaurant.id %>/review" method="POST">
-                    <div class="form-group">
-                        <label>Rating (1 to 5):</label>
-                        <select name="rating" required class="form-control">
-                            <option value="5">⭐ 5 - Excellent</option>
-                            <option value="4">⭐ 4 - Very Good</option>
-                            <option value="3">⭐ 3 - Average</option>
-                            <option value="2">⭐ 2 - Poor</option>
-                            <option value="1">⭐ 1 - Terrible</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Your Comment:</label>
-                        <textarea name="comment" rows="4" required placeholder="Write your review here..."
-                            class="form-control" style="width: 100%; padding: 8px;"></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-submit">Submit Review</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <% } %>
-
-            <% if (imgList.length> 1) { %>
-                <script>
-                    const images = <% - JSON.stringify(imgList) %>;
-                    let currentIndex = 0;
-
-                    const mainImg = document.getElementById('restaurantMainImg');
-                    const counter = document.getElementById('galleryCounter');
-                    const prevBtn = document.getElementById('prevImgBtn');
-                    const nextBtn = document.getElementById('nextImgBtn');
-
-                    function updateGallery() {
-                        mainImg.src = images[currentIndex];
-                        counter.textContent = `${currentIndex + 1} / ${images.length}`;
-                    }
-
-                    if (prevBtn && nextBtn) {
-                        prevBtn.addEventListener('click', () => {
-                            currentIndex = (currentIndex === 0) ? images.length - 1 : currentIndex - 1;
-                            updateGallery();
-                        });
-
-                        nextBtn.addEventListener('click', () => {
-                            currentIndex = (currentIndex === images.length - 1) ? 0 : currentIndex + 1;
-                            updateGallery();
-                        });
-                    }
-                </script>
-                <% } %>
-
-                    <script>
-                        function switchTab(evt, tabId) {
-                            const panes = document.getElementsByClassName('tab-pane');
-                            for (let pane of panes) {
-                                pane.classList.remove('active');
-                            }
-                            const buttons = document.getElementsByClassName('tab-btn');
-                            for (let btn of buttons) {
-                                btn.classList.remove('active');
-                            }
-                            document.getElementById(tabId).classList.add('active');
-                            evt.currentTarget.classList.add('active');
-                        }
-
-                        function openModal(modalId) {
-                            const modal = document.getElementById(modalId);
-                            if (modal) modal.classList.add('active');
-                        }
-                        function closeModal(modalId) {
-                            const modal = document.getElementById(modalId);
-                            if (modal) modal.classList.remove('active');
-                        }
-                    </script>
-
-                    <%- include('partials/footer') %>
+    <%- include('partials/footer') %>
