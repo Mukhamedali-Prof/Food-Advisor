@@ -36,7 +36,6 @@ app.get('/', async (req, res) => {
             const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
             if (users.length > 0) currentUser = users[0];
         }
-
         const [topRestaurants] = await db.query('SELECT * FROM restaurants WHERE is_hidden = 0 ORDER BY rating DESC LIMIT 3');
         const [recentReviews] = await db.query(`
             SELECT reviews.*, users.username, restaurants.name as restaurant_name 
@@ -46,7 +45,6 @@ app.get('/', async (req, res) => {
             WHERE reviews.is_hidden = 0 
             ORDER BY reviews.id DESC LIMIT 3
         `);
-
         res.render('index', { currentUser, topRestaurants, recentReviews });
     } catch (err) {
         console.error(err);
@@ -99,11 +97,9 @@ app.get('/profile', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
         if (!userEmail) return res.redirect('/?modal=login');
-
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
         if (users.length === 0) return res.redirect('/');
         const currentUser = users[0];
-
         if (currentUser.role === 'owner') return res.redirect('/owner-dashboard');
 
         const [myReviews] = await db.query(`
@@ -125,8 +121,7 @@ app.get('/profile', async (req, res) => {
             favorites = [];
         }
 
-        const stats = { ratedCount: myReviews.length };
-        res.render('profile', { currentUser, myReviews, favorites, stats });
+        res.render('profile', { currentUser, myReviews, favorites, stats: {} });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
@@ -138,10 +133,8 @@ app.post('/profile/update', upload.single('avatarFile'), async (req, res) => {
         const userEmail = req.cookies.user_email;
         const { username } = req.body;
         if (!userEmail) return res.redirect('/');
-
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
         if (users.length === 0) return res.redirect('/');
-
         let avatarPath = users[0].avatar;
         if (req.file) {
             avatarPath = '/uploads/' + req.file.filename;
@@ -174,10 +167,8 @@ app.get('/owner-dashboard', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
         if (!userEmail) return res.redirect('/?modal=login');
-
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
         if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
-
         const currentUser = users[0];
         let myRestaurants = [];
         try {
@@ -191,8 +182,7 @@ app.get('/owner-dashboard', async (req, res) => {
                 myRestaurants = [];
             }
         }
-        const stats = { restaurantsCount: myRestaurants.length };
-        res.render('owner-profile', { currentUser, myRestaurants, stats });
+        res.render('owner-profile', { currentUser, myRestaurants, stats: {} });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error on owner dashboard');
@@ -203,18 +193,14 @@ app.post('/owner/restaurants/add', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
         if (!userEmail) return res.redirect('/');
-
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
         if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
-
         const currentUser = users[0];
         const { name, cuisine, address, description, image } = req.body;
         try {
-            await db.query('INSERT INTO restaurants (name, cuisine, address, description, image, owner_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0.0)',
-                [name, cuisine, address, description, image || '/uploads/default-restaurant.jpg', currentUser.id]);
+            await db.query('INSERT INTO restaurants (name, cuisine, address, description, image, owner_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0.0)', [name, cuisine, address, description, image || '/uploads/default-restaurant.jpg', currentUser.id]);
         } catch (e) {
-            await db.query('INSERT INTO restaurants (name, cuisine, address, description, image, user_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0.0)',
-                [name, cuisine, address, description, image || '/uploads/default-restaurant.jpg', currentUser.id]);
+            await db.query('INSERT INTO restaurants (name, cuisine, address, description, image, user_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0.0)', [name, cuisine, address, description, image || '/uploads/default-restaurant.jpg', currentUser.id]);
         }
         res.redirect('/owner-dashboard');
     } catch (err) {
@@ -231,7 +217,6 @@ app.get('/admin', async (req, res) => {
             const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
             if (users.length > 0) currentUser = users[0];
         }
-
         if (currentUser && currentUser.role === 'admin') {
             const [allUsers] = await db.query('SELECT * FROM users');
             const [allRestaurants] = await db.query('SELECT * FROM restaurants');
@@ -272,10 +257,8 @@ app.post('/admin/users/delete/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-
         const userId = req.params.id;
         if (adminCheck[0].id == userId) return res.redirect('/admin');
-
         await db.query('DELETE FROM users WHERE id = ?', [userId]);
         res.redirect('/admin');
     } catch (err) {
@@ -290,10 +273,8 @@ app.post('/admin/users/toggle/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-
         const userId = req.params.id;
         if (adminCheck[0].id == userId) return res.redirect('/admin');
-
         const [targetUser] = await db.query('SELECT is_blocked FROM users WHERE id = ?', [userId]);
         if (targetUser.length > 0) {
             const newStatus = targetUser[0].is_blocked ? 0 : 1;
@@ -312,7 +293,6 @@ app.post('/admin/restaurants/delete/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-
         await db.query('DELETE FROM restaurants WHERE id = ?', [req.params.id]);
         res.redirect('/admin');
     } catch (err) {
@@ -327,7 +307,6 @@ app.post('/admin/restaurants/toggle/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-
         const restId = req.params.id;
         const [targetRest] = await db.query('SELECT is_hidden FROM restaurants WHERE id = ?', [restId]);
         if (targetRest.length > 0) {
@@ -347,7 +326,6 @@ app.post('/admin/reviews/delete/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-
         await db.query('DELETE FROM reviews WHERE id = ?', [req.params.id]);
         res.redirect('/admin');
     } catch (err) {
@@ -362,7 +340,6 @@ app.post('/admin/reviews/toggle/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-
         const revId = req.params.id;
         const [targetRev] = await db.query('SELECT is_hidden FROM reviews WHERE id = ?', [revId]);
         if (targetRev.length > 0) {
@@ -381,7 +358,6 @@ app.get('/search', async (req, res) => {
         const rawQuery = req.query.query || '';
         const searchQuery = `%${rawQuery.trim()}%`;
         const selectedCuisine = req.query.cuisine || '';
-
         let sql = 'SELECT * FROM restaurants WHERE is_hidden = 0 AND name LIKE ?';
         let params = [searchQuery];
         if (selectedCuisine) {
@@ -390,7 +366,6 @@ app.get('/search', async (req, res) => {
         }
         const [restaurants] = await db.query(sql, params);
         const [cuisines] = await db.query('SELECT DISTINCT cuisine FROM restaurants WHERE is_hidden = 0');
-
         let currentUser = null;
         if (req.cookies && req.cookies.user_email) {
             const [users] = await db.query('SELECT * FROM users WHERE email = ?', [req.cookies.user_email]);
@@ -417,7 +392,6 @@ app.get('/restaurant/:id', async (req, res) => {
             WHERE restaurant_id = ? AND reviews.is_hidden = 0 
             ORDER BY reviews.id DESC
         `, [restaurantId]);
-
         let currentUser = null;
         if (req.cookies && req.cookies.user_email) {
             const [users] = await db.query('SELECT * FROM users WHERE email = ?', [req.cookies.user_email]);

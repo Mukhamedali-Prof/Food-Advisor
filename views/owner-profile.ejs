@@ -27,7 +27,7 @@
                         <button type="button" class="profile-nav-btn active"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">My
-                            Restaurants (<%= myRestaurants.length %>)</button>
+                            Restaurants</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('add-restaurant-tab', this)">Add
                             Restaurant</button>
                         <button type="button" class="profile-nav-btn"
@@ -38,16 +38,9 @@
                 </aside>
 
                 <main class="profile-content">
+                    <!-- Profile Info Tab -->
                     <div id="profile-tab" class="tab-pane active">
                         <h3>Owner Profile Details</h3>
-                        <div class="stats-container" style="margin-top: 0;">
-                            <div class="stat-box">
-                                <h3>
-                                    <%= stats.restaurantsCount %>
-                                </h3>
-                                <p>Active Restaurants</p>
-                            </div>
-                        </div>
 
                         <form action="/profile/update" method="POST" enctype="multipart/form-data"
                             style="margin-top: 20px;">
@@ -55,7 +48,6 @@
                                 <label>Display Name:</label>
                                 <input type="text" name="username" value="<%= currentUser.username %>" required>
                             </div>
-
                             <div class="form-group">
                                 <label>Upload New Avatar from Device:</label>
                                 <input type="file" name="avatarFile" accept="image/*"
@@ -63,11 +55,11 @@
                                 <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
                                     PNG, WEBP</small>
                             </div>
-
                             <button type="submit" class="btn-primary">Save Profile Changes</button>
                         </form>
                     </div>
 
+                    <!-- Restaurants Tab -->
                     <div id="restaurants-tab" class="tab-pane">
                         <h3>My Managed Restaurants</h3>
                         <% if (myRestaurants && myRestaurants.length> 0) { %>
@@ -95,6 +87,7 @@
                                 <% } %>
                     </div>
 
+                    <!-- Add Restaurant Tab -->
                     <div id="add-restaurant-tab" class="tab-pane">
                         <h3>Add New Restaurant</h3>
                         <form action="/owner/restaurants/add" method="POST" style="margin-top: 15px;">
@@ -123,6 +116,7 @@
                         </form>
                     </div>
 
+                    <!-- Bookings Tab -->
                     <div id="reservations-tab" class="tab-pane">
                         <h3>Incoming Bookings & Orders</h3>
                         <p>Track table reservations and customer orders for your venues.</p>
@@ -131,6 +125,7 @@
                         </div>
                     </div>
 
+                    <!-- Security Tab -->
                     <div id="security-tab" class="tab-pane">
                         <h3>Security & Password Settings</h3>
                         <form action="/profile/security" method="POST" class="security-form">
@@ -139,14 +134,13 @@
                                 <input type="email" value="<%= currentUser.email %>" disabled
                                     style="background-color: #e9ecef; cursor: not-allowed;">
                             </div>
-
                             <div class="form-group">
                                 <label>New Password:</label>
                                 <input type="password" name="newPassword" placeholder="Enter new password" required>
                             </div>
-
                             <button type="submit" class="btn-primary">Update Security Settings</button>
                         </form>
+
                         <hr style="margin: 30px 0; border: none; border-top: 1px solid #dcdde1;">
 
                         <div style="background: #fff5f5; border: 1px solid #ff4757; padding: 20px; border-radius: 8px;">

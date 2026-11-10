@@ -27,9 +27,9 @@
                         <button type="button" class="profile-nav-btn active"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('favorites-tab', this)">Favorite
-                            Venues (<%= favorites.length %>)</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('reviews-tab', this)">My Reviews
-                            (<%= myReviews.length %>)</button>
+                            Venues</button>
+                        <button type="button" class="profile-nav-btn" onclick="showTab('reviews-tab', this)">My
+                            Reviews</button>
                         <button type="button" class="profile-nav-btn"
                             onclick="showTab('reservations-tab', this)">Bookings & Orders</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">Security
@@ -38,22 +38,9 @@
                 </aside>
 
                 <main class="profile-content">
+                    <!-- Profile Info Tab -->
                     <div id="profile-tab" class="tab-pane active">
                         <h3>My Profile Details</h3>
-                        <div class="stats-container" style="margin-top: 0;">
-                            <div class="stat-box">
-                                <h3>
-                                    <%= stats.ratedCount %>
-                                </h3>
-                                <p>Restaurants Rated</p>
-                            </div>
-                            <div class="stat-box">
-                                <h3>
-                                    <%= favorites.length %>
-                                </h3>
-                                <p>Saved Favorites</p>
-                            </div>
-                        </div>
 
                         <form action="/profile/update" method="POST" enctype="multipart/form-data"
                             style="margin-top: 20px;">
@@ -61,7 +48,6 @@
                                 <label>Display Name:</label>
                                 <input type="text" name="username" value="<%= currentUser.username %>" required>
                             </div>
-
                             <div class="form-group">
                                 <label>Upload New Avatar from Device:</label>
                                 <input type="file" name="avatarFile" accept="image/*"
@@ -69,11 +55,11 @@
                                 <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
                                     PNG, WEBP</small>
                             </div>
-
                             <button type="submit" class="btn-primary">Save Profile Changes</button>
                         </form>
                     </div>
 
+                    <!-- Favorites Tab -->
                     <div id="favorites-tab" class="tab-pane">
                         <h3>Saved Favorite Restaurants</h3>
                         <% if (favorites && favorites.length> 0) { %>
@@ -96,6 +82,7 @@
                                 <% } %>
                     </div>
 
+                    <!-- Reviews Tab -->
                     <div id="reviews-tab" class="tab-pane">
                         <h3>My Submitted Reviews</h3>
                         <% if (myReviews && myReviews.length> 0) { %>
@@ -123,6 +110,7 @@
                                 <% } %>
                     </div>
 
+                    <!-- Reservations Tab -->
                     <div id="reservations-tab" class="tab-pane">
                         <h3>Table Bookings & Orders</h3>
                         <p>Track your active bookings and dining history.</p>
@@ -131,6 +119,7 @@
                         </div>
                     </div>
 
+                    <!-- Security Tab -->
                     <div id="security-tab" class="tab-pane">
                         <h3>Security & Password Settings</h3>
                         <form action="/profile/security" method="POST" class="security-form">
@@ -139,14 +128,13 @@
                                 <input type="email" value="<%= currentUser.email %>" disabled
                                     style="background-color: #e9ecef; cursor: not-allowed;">
                             </div>
-
                             <div class="form-group">
                                 <label>New Password:</label>
                                 <input type="password" name="newPassword" placeholder="Enter new password" required>
                             </div>
-
                             <button type="submit" class="btn-primary">Update Security Settings</button>
                         </form>
+
                         <hr style="margin: 30px 0; border: none; border-top: 1px solid #dcdde1;">
 
                         <div style="background: #fff5f5; border: 1px solid #ff4757; padding: 20px; border-radius: 8px;">
