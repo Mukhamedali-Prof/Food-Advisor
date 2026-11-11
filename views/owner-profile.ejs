@@ -38,7 +38,6 @@
                 </aside>
 
                 <main class="profile-content">
-                    <!-- Profile Info Tab -->
                     <div id="profile-tab" class="tab-pane active">
                         <h3>Owner Profile Details</h3>
 
@@ -59,7 +58,6 @@
                         </form>
                     </div>
 
-                    <!-- Restaurants Tab -->
                     <div id="restaurants-tab" class="tab-pane">
                         <h3>My Managed Restaurants</h3>
                         <% if (myRestaurants && myRestaurants.length> 0) { %>
@@ -87,7 +85,6 @@
                                 <% } %>
                     </div>
 
-                    <!-- Add Restaurant Tab -->
                     <div id="add-restaurant-tab" class="tab-pane">
                         <h3>Add New Restaurant</h3>
                         <form action="/owner/restaurants/add" method="POST" style="margin-top: 15px;">
@@ -116,7 +113,6 @@
                         </form>
                     </div>
 
-                    <!-- Bookings Tab -->
                     <div id="reservations-tab" class="tab-pane">
                         <h3>Incoming Bookings & Orders</h3>
                         <p>Track table reservations and customer orders for your venues.</p>
@@ -125,7 +121,6 @@
                         </div>
                     </div>
 
-                    <!-- Security Tab -->
                     <div id="security-tab" class="tab-pane">
                         <h3>Security & Password Settings</h3>
                         <form action="/profile/security" method="POST" class="security-form">
