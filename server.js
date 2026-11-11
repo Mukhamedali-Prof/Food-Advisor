@@ -384,7 +384,6 @@ app.get('/owner-dashboard', async (req, res) => {
     }
 });
 
-// --- ТОТ САМЫЙ БЛОК С РАСШИРЕННЫМ ВЫВОДОМ ОШИБКИ ---
 app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -761,7 +760,7 @@ app.post('/admin/users/toggle/:id', async (req, res) => {
         const userEmail = req.cookies.user_email;
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
-        if (adminCheck.length === 0 || adminCheck[0].id == req.params.id) return res.redirect('/admin'); 
+        if (adminCheck.length === 0 || adminCheck[0].id == req.params.id) return res.redirect('/admin');
 
         const [targetUser] = await db.query('SELECT is_blocked FROM users WHERE id = ?', [req.params.id]);
         if (targetUser.length > 0) {

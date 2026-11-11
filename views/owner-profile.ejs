@@ -1,9 +1,7 @@
 <%- include('partials/header') %>
-
     <div class="container" style="max-width: 1000px;">
         <div class="dashboard-card-wrapper">
             <h2>Restaurant Owner Dashboard</h2>
-
             <div class="profile-layout">
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-box">
@@ -22,36 +20,35 @@
                                         Restaurant Owner
                                     </span>
                     </div>
-
                     <nav class="profile-nav">
-                        <button type="button" class="profile-nav-btn <%= activeTab === 'profile-tab' ? 'active' : '' %>"
+                        <button type="button"
+                            class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">My
                             Restaurants</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('add-restaurant-tab', this)">Add
                             Restaurant</button>
                         <button type="button"
-                            class="profile-nav-btn <%= activeTab === 'reservations-tab' ? 'active' : '' %>"
+                            class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'reservations-tab') ? 'active' : '' %>"
                             onclick="showTab('reservations-tab', this)">
                             Bookings & Orders
                             <span id="booking-notification-badge"
-                                style="display: <%= unreadBookingCount > 0 ? 'inline-block' : 'none' %>; margin-left: 6px; padding: 2px 7px; border-radius: 12px; background: #c62828; color: white; font-size: 0.8rem;">
-                                <%= unreadBookingCount %>
+                                style="display: <%= (typeof unreadBookingCount !== 'undefined' && unreadBookingCount > 0) ? 'inline-block' : 'none' %>; margin-left: 6px; padding: 2px 7px; border-radius: 12px; background: #c62828; color: white; font-size: 0.8rem;">
+                                <%= typeof unreadBookingCount !=='undefined' ? unreadBookingCount : 0 %>
                             </span>
                         </button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">Security
                             Settings</button>
                     </nav>
                 </aside>
-
                 <main class="profile-content">
                     <p id="booking-notification-toast" role="status" aria-live="polite"
                         style="display: none; padding: 12px; border-radius: 6px; background: #fff3cd; color: #664d03;">
                     </p>
 
-                    <div id="profile-tab" class="tab-pane <%= activeTab === 'profile-tab' ? 'active' : '' %>">
+                    <div id="profile-tab"
+                        class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>">
                         <h3>Owner Profile Details</h3>
-
                         <form action="/profile/update" method="POST" enctype="multipart/form-data"
                             style="margin-top: 20px;">
                             <div class="form-group">
@@ -96,9 +93,8 @@
                                                     style="display: inline-block; margin-top: 5px;"
                                                     onsubmit="return confirm('Delete this restaurant? Its menu items, reviews, and favorites will also be deleted.');">
                                                     <button type="submit" class="btn-secondary"
-                                                        style="font-size: 0.8rem; padding: 4px 10px; border-color: #c62828; color: #c62828;">
-                                                        Delete Restaurant
-                                                    </button>
+                                                        style="font-size: 0.8rem; padding: 4px 10px; border-color: #c62828; color: #c62828;">Delete
+                                                        Restaurant</button>
                                                 </form>
                                     </div>
                                     <% }) %>
@@ -109,10 +105,8 @@
                                 <% } %>
                     </div>
 
-                    <!-- ИСПРАВЛЕННАЯ ВКЛАДКА ADD RESTAURANT С КНОПКОЙ -->
                     <div id="add-restaurant-tab" class="tab-pane">
                         <h3>Add New Restaurant</h3>
-
                         <form action="/owner/restaurants/add" method="POST" enctype="multipart/form-data"
                             style="margin-top: 15px;">
                             <div class="form-group">
@@ -133,8 +127,6 @@
                                     style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"
                                     required></textarea>
                             </div>
-
-                            <!-- КРАСИВАЯ КНОПКА ДЛЯ ЗАГРУЗКИ ФОТО -->
                             <div class="form-group">
                                 <label>Restaurant Image:</label>
                                 <div
@@ -142,32 +134,27 @@
                                     <input type="file" name="imageFile" accept="image/*" id="fileInput"
                                         style="display: none;"
                                         onchange="document.getElementById('fileName').innerText = this.files.length > 0 ? this.files[0].name : 'Файл не выбран'">
-
                                     <button type="button"
                                         style="background-color: #ffc800; color: #000; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;"
-                                        onclick="document.getElementById('fileInput').click();">
-                                        📸 Выбрать фото
-                                    </button>
-
+                                        onclick="document.getElementById('fileInput').click();">📸 Выбрать фото</button>
                                     <p id="fileName"
                                         style="margin-top: 10px; color: #666; font-size: 14px; margin-bottom: 0;">Файл
                                         не выбран</p>
                                 </div>
                             </div>
-
                             <button type="submit" class="btn-primary"
                                 style="margin-top: 15px; width: 100%; padding: 12px; font-size: 16px;">Publish
                                 Restaurant</button>
                         </form>
                     </div>
 
-                    <div id="reservations-tab" class="tab-pane <%= activeTab === 'reservations-tab' ? 'active' : '' %>">
+                    <div id="reservations-tab"
+                        class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'reservations-tab') ? 'active' : '' %>">
                         <h3>Restaurant Bookings</h3>
                         <p>New requests: <strong id="booking-unread-count">
-                                <%= unreadBookingCount %>
+                                <%= typeof unreadBookingCount !=='undefined' ? unreadBookingCount : 0 %>
                             </strong></p>
-
-                        <% if (bookings && bookings.length> 0) { %>
+                        <% if (typeof bookings !=='undefined' && bookings && bookings.length> 0) { %>
                             <% bookings.forEach(function(booking) { %>
                                 <div class="favorite-item" style="margin-bottom: 14px;">
                                     <h4>
@@ -177,10 +164,8 @@
                                         <%= booking.customer_name %> (<%= booking.customer_email %>)
                                     </p>
                                     <p><strong>Date:</strong>
-                                        <%= booking.booking_date %> |
-                                            <strong>Time:</strong>
-                                            <%= booking.start_time %>–<%= booking.end_time %> |
-                                                    <strong>Guests:</strong>
+                                        <%= booking.booking_date %> | <strong>Time:</strong>
+                                            <%= booking.start_time %>–<%= booking.end_time %> | <strong>Guests:</strong>
                                                     <%= booking.guest_count %>
                                     </p>
                                     <p><strong>Status:</strong>
@@ -221,9 +206,7 @@
                             </div>
                             <button type="submit" class="btn-primary">Update Security Settings</button>
                         </form>
-
                         <hr style="margin: 30px 0; border: none; border-top: 1px solid #dcdde1;">
-
                         <div style="background: #fff5f5; border: 1px solid #ff4757; padding: 20px; border-radius: 8px;">
                             <h4 style="margin-top: 0; color: #ff4757;">Terminate Session</h4>
                             <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Log out of your Food Advisor
@@ -242,17 +225,21 @@
         const bookingBadge = document.getElementById('booking-notification-badge');
         const unreadBookingCount = document.getElementById('booking-unread-count');
         const bookingToast = document.getElementById('booking-notification-toast');
-        let previousUnreadCount = Number(bookingBadge.textContent.trim()) || 0;
+        let previousUnreadCount = bookingBadge ? (Number(bookingBadge.textContent.trim()) || 0) : 0;
 
-        if (previousUnreadCount > 0) {
+        if (previousUnreadCount > 0 && bookingToast) {
             bookingToast.textContent = `You have ${previousUnreadCount} new booking request(s).`;
             bookingToast.style.display = 'block';
         }
 
         function updateBookingBadge(count) {
-            bookingBadge.textContent = count;
-            bookingBadge.style.display = count > 0 ? 'inline-block' : 'none';
-            unreadBookingCount.textContent = count;
+            if (bookingBadge) {
+                bookingBadge.textContent = count;
+                bookingBadge.style.display = count > 0 ? 'inline-block' : 'none';
+            }
+            if (unreadBookingCount) {
+                unreadBookingCount.textContent = count;
+            }
         }
 
         async function markBookingsAsRead() {
@@ -261,7 +248,7 @@
                 if (response.ok) {
                     updateBookingBadge(0);
                     previousUnreadCount = 0;
-                    bookingToast.style.display = 'none';
+                    if (bookingToast) bookingToast.style.display = 'none';
                 }
             } catch (err) {
                 console.error('Could not mark booking notifications as read:', err);
@@ -274,13 +261,13 @@
                 if (!response.ok) return;
                 const data = await response.json();
                 const count = Number(data.unreadCount) || 0;
-
-                if (count > previousUnreadCount && data.latest) {
+                if (count > previousUnreadCount && data.latest && bookingToast) {
                     bookingToast.textContent = `New booking request for ${data.latest.restaurantName} from ${data.latest.customerName}.`;
                     bookingToast.style.display = 'block';
-                    window.setTimeout(() => { bookingToast.style.display = 'none'; }, 8000);
+                    window.setTimeout(() => {
+                        bookingToast.style.display = 'none';
+                    }, 8000);
                 }
-
                 updateBookingBadge(count);
                 previousUnreadCount = count;
             } catch (err) {
@@ -288,15 +275,12 @@
             }
         }
 
-        if (<%= activeTab === 'reservations-tab' %>) {
-            markBookingsAsRead();
-        }
-
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            btn.classList.add('active');
+            const targetTab = document.getElementById(tabId);
+            if (targetTab) targetTab.classList.add('active');
+            if (btn) btn.classList.add('active');
             if (tabId === 'reservations-tab') markBookingsAsRead();
         }
 
