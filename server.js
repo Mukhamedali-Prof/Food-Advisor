@@ -595,6 +595,77 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/update', async (req, res
     }
 });
 
+app.get('/owner/restaurants/:id/edit', async (req, res) => {
+    try {
+        const owner = await getOwnerFromRequest(req);
+        if (!owner) return res.redirect('/?modal=login');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        const [restaurants] = await db.query(
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, owner.id]
+        );
+
+        if (restaurants.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by you.');
+        }
+
+        return res.render('owner-edit-restaurant', { currentUser: owner, restaurant: restaurants[0] });
+    } catch (err) {
+        console.error('Failed to load edit restaurant page:', err);
+        return res.status(500).send('Server error');
+    }
+});
+
+app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req, res) => {
+    try {
+        const owner = await getOwnerFromRequest(req);
+        if (!owner) return res.redirect('/?modal=login');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        const [restaurants] = await db.query(
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, owner.id]
+        );
+
+        if (restaurants.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by you.');
+        }
+
+        const currentRestaurant = restaurants[0];
+        const { name, cuisine, address, description } = req.body || {};
+
+        const updatedName = typeof name === 'string' ? name.trim() : '';
+        const updatedCuisine = typeof cuisine === 'string' ? cuisine.trim() : '';
+        const updatedAddress = typeof address === 'string' ? address.trim() : '';
+        const updatedDescription = typeof description === 'string' ? description.trim() : '';
+
+        if (!updatedName || !updatedCuisine || !updatedAddress || !updatedDescription) {
+            return sendRestaurantError(res, 'Incomplete details', new Error('All fields are required.'), 400);
+        }
+
+        const imagePath = req.file ? '/uploads/' + req.file.filename : currentRestaurant.image;
+
+        await db.query(
+            'UPDATE restaurants SET name = ?, cuisine = ?, address = ?, description = ?, image = ? WHERE id = ? AND owner_id = ?',
+            [updatedName, updatedCuisine, updatedAddress, updatedDescription, imagePath, restaurantId, owner.id]
+        );
+
+        return res.redirect('/owner-dashboard');
+    } catch (err) {
+        console.error('Failed to update restaurant:', err);
+        return sendRestaurantError(res, 'Failed to update restaurant', err);
+    }
+});
+
 app.post('/owner/restaurants/:restaurantId/menu/:itemId/delete', async (req, res) => {
     try {
         const owner = await getOwnerFromRequest(req);
@@ -891,6 +962,26 @@ app.post('/profile/update', upload.single('avatarFile'), async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error during profile update');
+    }
+});
+
+app.post('/profile/avatar/delete', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0) return res.redirect('/');
+
+        await db.query('UPDATE users SET avatar = NULL WHERE email = ?', [userEmail]);
+
+        if (users[0].role === 'owner') {
+            return res.redirect('/owner-dashboard');
+        }
+        return res.redirect('/profile');
+    } catch (err) {
+        console.error('Failed to delete avatar:', err);
+        res.status(500).send('Server error during avatar deletion');
     }
 });
 

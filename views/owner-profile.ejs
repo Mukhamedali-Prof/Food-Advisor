@@ -55,14 +55,27 @@
                                 <label>Display Name:</label>
                                 <input type="text" name="username" value="<%= currentUser.username %>" required>
                             </div>
+
                             <div class="form-group">
                                 <label>Upload New Avatar from Device:</label>
                                 <input type="file" name="avatarFile" accept="image/*"
-                                    style="padding: 8px 0; border: none; background: transparent;">
+                                    style="padding: 8px 0; border: none; background: transparent; display: block; width: 100%;">
                                 <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
                                     PNG, WEBP</small>
                             </div>
-                            <button type="submit" class="btn-primary">Save Profile Changes</button>
+
+                            <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
+                                        class="btn-primary"
+                                        style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
+                                        onclick="return confirm('Вы действительно хотите удалить фото профиля?');">
+                                        Delete Avatar
+                                    </button>
+                                </div>
+                                <% } %>
+
+                                    <button type="submit" class="btn-primary">Save Profile Changes</button>
                         </form>
                     </div>
 
@@ -89,6 +102,9 @@
                                                 <a href="/owner/restaurants/<%= r.id %>/menu" class="btn-secondary"
                                                     style="font-size: 0.8rem; padding: 4px 10px; margin-top: 5px;">Manage
                                                     Menu</a>
+                                                <a href="/owner/restaurants/<%= r.id %>/edit" class="btn-secondary"
+                                                    style="font-size: 0.8rem; padding: 4px 10px; margin-top: 5px; display: inline-block; text-decoration: none;">Edit
+                                                    Restaurant</a>
                                                 <form action="/owner/restaurants/delete/<%= r.id %>" method="POST"
                                                     style="display: inline-block; margin-top: 5px;"
                                                     onsubmit="return confirm('Delete this restaurant? Its menu items, reviews, and favorites will also be deleted.');">

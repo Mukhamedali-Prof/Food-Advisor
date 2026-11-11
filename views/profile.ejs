@@ -54,7 +54,17 @@
                                 <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
                                     PNG, WEBP</small>
                             </div>
-                            <button type="submit" class="btn-primary">Save Profile Changes</button>
+                            <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
+                                        class="btn-primary"
+                                        style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
+                                        onclick="return confirm('Вы действительно хотите удалить фото профиля?');">
+                                        Delete Avatar
+                                    </button>
+                                </div>
+                                <% } %>
+                                    <button type="submit" class="btn-primary">Save Profile Changes</button>
                         </form>
                     </div>
 

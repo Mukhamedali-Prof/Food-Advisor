@@ -1,0 +1,57 @@
+<%- include('partials/header') %>
+    <div class="container" style="max-width: 800px; margin-top: 30px; margin-bottom: 50px;">
+        <div class="dashboard-card-wrapper"
+            style="background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h2>Edit Restaurant: <%= restaurant.name %>
+            </h2>
+
+            <form action="/owner/restaurants/<%= restaurant.id %>/edit" method="POST" enctype="multipart/form-data"
+                style="margin-top: 20px;">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Restaurant Name:</label>
+                    <input type="text" name="name" value="<%= restaurant.name %>" required
+                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Cuisine Type:</label>
+                    <input type="text" name="cuisine" value="<%= restaurant.cuisine %>" required
+                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Address:</label>
+                    <input type="text" name="address" value="<%= restaurant.address %>" required
+                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Description:</label>
+                    <textarea name="description" rows="4"
+                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"
+                        required><%= restaurant.description %></textarea>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Current Image:</label>
+                    <% if (restaurant.image) { %>
+                        <div style="margin-bottom: 10px;">
+                            <img src="<%= restaurant.image %>" alt="Restaurant Image"
+                                style="max-width: 150px; height: auto; border-radius: 4px;">
+                        </div>
+                        <% } %>
+                            <label>Upload New Image (optional):</label>
+                            <input type="file" name="imageFile" accept="image/*"
+                                style="display: block; margin-top: 5px;">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn-primary" style="padding: 10px 20px; cursor: pointer;">Save
+                        Changes</button>
+                    <a href="/owner-dashboard" class="btn-secondary"
+                        style="padding: 10px 20px; text-decoration: none; display: inline-block; text-align: center;">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    <%- include('partials/footer') %>
