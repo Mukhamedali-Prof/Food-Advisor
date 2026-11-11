@@ -49,10 +49,16 @@
 
             <div class="section-block">
                 <h3>Table Reservation</h3>
+                <% if (bookingMessage) { %>
+                    <p role="status" style="padding: 12px; border-radius: 6px; background: #fff3cd;">
+                        <%= bookingMessage %>
+                    </p>
+                <% } %>
+                <% if (currentUser && currentUser.role === 'customer') { %>
                 <form action="/restaurant/<%= restaurant.id %>/book" method="POST" class="booking-form">
                     <div class="form-group">
                         <label>Date:</label>
-                        <input type="date" name="book_date" required class="form-control">
+                        <input type="date" name="book_date" min="<%= minBookingDate %>" required class="form-control">
                     </div>
                     <div class="form-group">
                         <label>Start Time:</label>
@@ -68,16 +74,29 @@
                     </div>
                     <button type="submit" class="btn-primary">Confirm Booking</button>
                 </form>
+                <% } else { %>
+                    <p>Please <a href="/?modal=login">log in with a customer account</a> to request a reservation.</p>
+                <% } %>
             </div>
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
             <div class="section-block">
                 <h3>Menu</h3>
-                <ul>
-                    <li>Signature Pasta - $18.99</li>
-                    <li>Italian Bruschetta - $8.50</li>
-                </ul>
+                <% if (menuItems && menuItems.length > 0) { %>
+                    <div class="favorites-grid">
+                        <% menuItems.forEach(function(item) { %>
+                            <div class="favorite-item">
+                                <h4><%= item.name %> — $<%= Number(item.price).toFixed(2) %></h4>
+                                <% if (item.description) { %>
+                                    <p><%= item.description %></p>
+                                <% } %>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p>This restaurant has not published its menu yet.</p>
+                <% } %>
             </div>
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
@@ -114,13 +133,13 @@
                                                 <textarea name="comment" rows="3" required
                                                     class="form-control"></textarea>
                                             </div>
-                                            <button type="submit" class="btn-primary">Submit Review</>
+                                            <button type="submit" class="btn-primary">Submit Review</button>
                                         </form>
                                         <% } %>
             </div>
 
             <div style="margin-top: 30px;">
-                <a href="/search" class="btn-primary">← Back to Search</a>
+                <a href="/" class="btn-primary">Back to Home</a>
             </div>
         </div>
     </div>

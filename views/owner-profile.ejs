@@ -24,21 +24,32 @@
                     </div>
 
                     <nav class="profile-nav">
-                        <button type="button" class="profile-nav-btn active"
+                        <button type="button" class="profile-nav-btn <%= activeTab === 'profile-tab' ? 'active' : '' %>"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">My
                             Restaurants</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('add-restaurant-tab', this)">Add
                             Restaurant</button>
-                        <button type="button" class="profile-nav-btn"
-                            onclick="showTab('reservations-tab', this)">Bookings & Orders</button>
+                        <button type="button"
+                            class="profile-nav-btn <%= activeTab === 'reservations-tab' ? 'active' : '' %>"
+                            onclick="showTab('reservations-tab', this)">
+                            Bookings & Orders
+                            <span id="booking-notification-badge"
+                                style="display: <%= unreadBookingCount > 0 ? 'inline-block' : 'none' %>; margin-left: 6px; padding: 2px 7px; border-radius: 12px; background: #c62828; color: white; font-size: 0.8rem;">
+                                <%= unreadBookingCount %>
+                            </span>
+                        </button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">Security
                             Settings</button>
                     </nav>
                 </aside>
 
                 <main class="profile-content">
-                    <div id="profile-tab" class="tab-pane active">
+                    <p id="booking-notification-toast" role="status" aria-live="polite"
+                        style="display: none; padding: 12px; border-radius: 6px; background: #fff3cd; color: #664d03;">
+                    </p>
+
+                    <div id="profile-tab" class="tab-pane <%= activeTab === 'profile-tab' ? 'active' : '' %>">
                         <h3>Owner Profile Details</h3>
 
                         <form action="/profile/update" method="POST" enctype="multipart/form-data"
@@ -73,9 +84,22 @@
                                         <p style="font-size: 0.85rem; color: #666;">
                                             <%= r.address %>
                                         </p>
-                                        <button type="button" class="btn-secondary"
-                                            style="font-size: 0.8rem; padding: 4px 10px; margin-top: 5px;">Manage
-                                            Menu</button>
+                                        <% if (r.description) { %>
+                                            <p><strong>Description:</strong>
+                                                <%= r.description %>
+                                            </p>
+                                            <% } %>
+                                                <a href="/owner/restaurants/<%= r.id %>/menu" class="btn-secondary"
+                                                    style="font-size: 0.8rem; padding: 4px 10px; margin-top: 5px;">Manage
+                                                    Menu</a>
+                                                <form action="/owner/restaurants/delete/<%= r.id %>" method="POST"
+                                                    style="display: inline-block; margin-top: 5px;"
+                                                    onsubmit="return confirm('Delete this restaurant? Its menu items, reviews, and favorites will also be deleted.');">
+                                                    <button type="submit" class="btn-secondary"
+                                                        style="font-size: 0.8rem; padding: 4px 10px; border-color: #c62828; color: #c62828;">
+                                                        Delete Restaurant
+                                                    </button>
+                                                </form>
                                     </div>
                                     <% }) %>
                             </div>
@@ -85,9 +109,12 @@
                                 <% } %>
                     </div>
 
+                    <!-- ИСПРАВЛЕННАЯ ВКЛАДКА ADD RESTAURANT С КНОПКОЙ -->
                     <div id="add-restaurant-tab" class="tab-pane">
                         <h3>Add New Restaurant</h3>
-                        <form action="/owner/restaurants/add" method="POST" style="margin-top: 15px;">
+
+                        <form action="/owner/restaurants/add" method="POST" enctype="multipart/form-data"
+                            style="margin-top: 15px;">
                             <div class="form-group">
                                 <label>Restaurant Name:</label>
                                 <input type="text" name="name" placeholder="e.g. Papa's Pizza" required>
@@ -103,22 +130,81 @@
                             <div class="form-group">
                                 <label>Description:</label>
                                 <textarea name="description" rows="3" placeholder="Brief description of your venue"
-                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"></textarea>
+                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"
+                                    required></textarea>
                             </div>
+
+                            <!-- КРАСИВАЯ КНОПКА ДЛЯ ЗАГРУЗКИ ФОТО -->
                             <div class="form-group">
-                                <label>Image URL (Optional):</label>
-                                <input type="text" name="image" placeholder="/uploads/restaurant.jpg">
+                                <label>Restaurant Image:</label>
+                                <div
+                                    style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa; margin-top: 5px;">
+                                    <input type="file" name="imageFile" accept="image/*" id="fileInput"
+                                        style="display: none;"
+                                        onchange="document.getElementById('fileName').innerText = this.files.length > 0 ? this.files[0].name : 'Файл не выбран'">
+
+                                    <button type="button"
+                                        style="background-color: #ffc800; color: #000; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;"
+                                        onclick="document.getElementById('fileInput').click();">
+                                        📸 Выбрать фото
+                                    </button>
+
+                                    <p id="fileName"
+                                        style="margin-top: 10px; color: #666; font-size: 14px; margin-bottom: 0;">Файл
+                                        не выбран</p>
+                                </div>
                             </div>
-                            <button type="submit" class="btn-primary">Publish Restaurant</button>
+
+                            <button type="submit" class="btn-primary"
+                                style="margin-top: 15px; width: 100%; padding: 12px; font-size: 16px;">Publish
+                                Restaurant</button>
                         </form>
                     </div>
 
-                    <div id="reservations-tab" class="tab-pane">
-                        <h3>Incoming Bookings & Orders</h3>
-                        <p>Track table reservations and customer orders for your venues.</p>
-                        <div class="role-card" style="border-left-color: #ffc800;">
-                            <p>No incoming reservations at the moment.</p>
-                        </div>
+                    <div id="reservations-tab" class="tab-pane <%= activeTab === 'reservations-tab' ? 'active' : '' %>">
+                        <h3>Restaurant Bookings</h3>
+                        <p>New requests: <strong id="booking-unread-count">
+                                <%= unreadBookingCount %>
+                            </strong></p>
+
+                        <% if (bookings && bookings.length> 0) { %>
+                            <% bookings.forEach(function(booking) { %>
+                                <div class="favorite-item" style="margin-bottom: 14px;">
+                                    <h4>
+                                        <%= booking.restaurant_name %>
+                                    </h4>
+                                    <p><strong>Customer:</strong>
+                                        <%= booking.customer_name %> (<%= booking.customer_email %>)
+                                    </p>
+                                    <p><strong>Date:</strong>
+                                        <%= booking.booking_date %> |
+                                            <strong>Time:</strong>
+                                            <%= booking.start_time %>–<%= booking.end_time %> |
+                                                    <strong>Guests:</strong>
+                                                    <%= booking.guest_count %>
+                                    </p>
+                                    <p><strong>Status:</strong>
+                                        <%= booking.status %>
+                                    </p>
+                                    <% if (booking.status==='pending' ) { %>
+                                        <form action="/owner/bookings/<%= booking.id %>/status" method="POST"
+                                            style="display: inline-block;">
+                                            <input type="hidden" name="status" value="confirmed">
+                                            <button type="submit" class="btn-primary">Confirm Booking</button>
+                                        </form>
+                                        <form action="/owner/bookings/<%= booking.id %>/status" method="POST"
+                                            style="display: inline-block;">
+                                            <input type="hidden" name="status" value="cancelled">
+                                            <button type="submit" class="btn-secondary">Decline</button>
+                                        </form>
+                                        <% } %>
+                                </div>
+                                <% }) %>
+                                    <% } else { %>
+                                        <div class="role-card" style="border-left-color: #ffc800;">
+                                            <p>No reservations yet.</p>
+                                        </div>
+                                        <% } %>
                     </div>
 
                     <div id="security-tab" class="tab-pane">
@@ -153,12 +239,66 @@
     </div>
 
     <script>
+        const bookingBadge = document.getElementById('booking-notification-badge');
+        const unreadBookingCount = document.getElementById('booking-unread-count');
+        const bookingToast = document.getElementById('booking-notification-toast');
+        let previousUnreadCount = Number(bookingBadge.textContent.trim()) || 0;
+
+        if (previousUnreadCount > 0) {
+            bookingToast.textContent = `You have ${previousUnreadCount} new booking request(s).`;
+            bookingToast.style.display = 'block';
+        }
+
+        function updateBookingBadge(count) {
+            bookingBadge.textContent = count;
+            bookingBadge.style.display = count > 0 ? 'inline-block' : 'none';
+            unreadBookingCount.textContent = count;
+        }
+
+        async function markBookingsAsRead() {
+            try {
+                const response = await fetch('/owner/bookings/read-all', { method: 'POST' });
+                if (response.ok) {
+                    updateBookingBadge(0);
+                    previousUnreadCount = 0;
+                    bookingToast.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Could not mark booking notifications as read:', err);
+            }
+        }
+
+        async function checkForNewBookings() {
+            try {
+                const response = await fetch('/owner/bookings/notifications');
+                if (!response.ok) return;
+                const data = await response.json();
+                const count = Number(data.unreadCount) || 0;
+
+                if (count > previousUnreadCount && data.latest) {
+                    bookingToast.textContent = `New booking request for ${data.latest.restaurantName} from ${data.latest.customerName}.`;
+                    bookingToast.style.display = 'block';
+                    window.setTimeout(() => { bookingToast.style.display = 'none'; }, 8000);
+                }
+
+                updateBookingBadge(count);
+                previousUnreadCount = count;
+            } catch (err) {
+                console.error('Could not check booking notifications:', err);
+            }
+        }
+
+        if (<%= activeTab === 'reservations-tab' %>) {
+            markBookingsAsRead();
+        }
+
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
+            if (tabId === 'reservations-tab') markBookingsAsRead();
         }
-    </script>
 
-    <%- include('partials/footer') %>
+        setInterval(checkForNewBookings, 10000);
+    </script>

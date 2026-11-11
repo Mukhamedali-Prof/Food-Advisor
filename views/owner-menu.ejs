@@ -1,0 +1,69 @@
+<%- include('partials/header') %>
+
+<div class="container" style="max-width: 1000px;">
+    <div class="dashboard-card-wrapper">
+        <a href="/owner-dashboard" class="btn-secondary">Back to Owner Dashboard</a>
+        <h2 style="margin-top: 20px;">Manage Menu: <%= restaurant.name %></h2>
+
+        <% if (statusMessage) { %>
+            <p role="status" style="padding: 12px; background: #e8f5e9; border-radius: 6px;">
+                <%= statusMessage %>
+            </p>
+        <% } %>
+
+        <section class="favorite-item" style="margin: 20px 0;">
+            <h3>Add Menu Item</h3>
+            <form action="/owner/restaurants/<%= restaurant.id %>/menu/add" method="POST">
+                <div class="form-group">
+                    <label>Item name:</label>
+                    <input type="text" name="name" maxlength="150" required>
+                </div>
+                <div class="form-group">
+                    <label>Description (optional):</label>
+                    <textarea name="description" maxlength="2000" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Price:</label>
+                    <input type="number" name="price" min="0" max="99999999.99" step="0.01" required>
+                </div>
+                <button type="submit" class="btn-primary">Add Item</button>
+            </form>
+        </section>
+
+        <section>
+            <h3>Current Menu</h3>
+            <% if (menuItems.length > 0) { %>
+                <% menuItems.forEach(function(item) { %>
+                    <article class="favorite-item" style="margin: 14px 0;">
+                        <form action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/update" method="POST">
+                            <div class="form-group">
+                                <label>Item name:</label>
+                                <input type="text" name="name" value="<%= item.name %>" maxlength="150" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Description (optional):</label>
+                                <textarea name="description" maxlength="2000" rows="3"><%= item.description || '' %></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Price:</label>
+                                <input type="number" name="price" value="<%= Number(item.price).toFixed(2) %>"
+                                    min="0" max="99999999.99" step="0.01" required>
+                            </div>
+                            <button type="submit" class="btn-primary">Save Changes</button>
+                        </form>
+                        <form action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/delete" method="POST"
+                            style="margin-top: 8px;"
+                            onsubmit="return confirm('Delete this menu item?');">
+                            <button type="submit" class="btn-secondary"
+                                style="border-color: #c62828; color: #c62828;">Delete Item</button>
+                        </form>
+                    </article>
+                <% }) %>
+            <% } else { %>
+                <p>No menu items yet. Add the first item above.</p>
+            <% } %>
+        </section>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
