@@ -38,7 +38,6 @@
                 </aside>
 
                 <main class="profile-content">
-                    <!-- Profile Info Tab -->
                     <div id="profile-tab" class="tab-pane active">
                         <h3>My Profile Details</h3>
 
@@ -59,7 +58,6 @@
                         </form>
                     </div>
 
-                    <!-- Favorites Tab -->
                     <div id="favorites-tab" class="tab-pane">
                         <h3>Saved Favorite Restaurants</h3>
                         <% if (favorites && favorites.length> 0) { %>
@@ -82,7 +80,6 @@
                                 <% } %>
                     </div>
 
-                    <!-- Reviews Tab -->
                     <div id="reviews-tab" class="tab-pane">
                         <h3>My Submitted Reviews</h3>
                         <% if (myReviews && myReviews.length> 0) { %>
@@ -110,7 +107,6 @@
                                 <% } %>
                     </div>
 
-                    <!-- Reservations Tab -->
                     <div id="reservations-tab" class="tab-pane">
                         <h3>Table Bookings & Orders</h3>
                         <p>Track your active bookings and dining history.</p>
@@ -119,7 +115,6 @@
                         </div>
                     </div>
 
-                    <!-- Security Tab -->
                     <div id="security-tab" class="tab-pane">
                         <h3>Security & Password Settings</h3>
                         <form action="/profile/security" method="POST" class="security-form">
