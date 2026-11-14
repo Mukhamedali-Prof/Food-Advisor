@@ -29,14 +29,15 @@
                                         alt="<%= rest.name %>" class="restaurant-thumb">
                                 </div>
                                 <div class="restaurant-info">
-                                    <h3>
-                                        <%= rest.name %>
-                                    </h3>
-                                    <p><strong>Cuisine:</strong>
-                                        <%= rest.cuisine %>
+                                    <h3 title="<%= rest.name %>"><%= rest.name %></h3>
+                                    <p class="restaurant-card-field restaurant-cuisine">
+                                        <strong>Cuisine:</strong><span class="restaurant-card-value" title="<%= rest.cuisine %>"><%= rest.cuisine %></span>
                                     </p>
-                                    <p><strong>Address:</strong>
-                                        <%= rest.address %>
+                                    <p class="restaurant-card-field restaurant-address">
+                                        <strong>Address:</strong><span class="restaurant-card-value" title="<%= rest.address %>"><%= rest.address %></span>
+                                    </p>
+                                    <p class="restaurant-description">
+                                        <strong>Description:</strong><span class="restaurant-card-value" title="<%= rest.description || '' %>"><%= rest.description || 'No description provided yet.' %></span>
                                     </p>
                                     <div class="restaurant-rating">⭐ <%= rest.rating || 'New' %> / 5.0</div>
                                 </div>

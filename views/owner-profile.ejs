@@ -84,21 +84,20 @@
                         <% if (myRestaurants && myRestaurants.length> 0) { %>
                             <div class="favorites-grid">
                                 <% myRestaurants.forEach(r=> { %>
-                                    <div class="favorite-item">
-                                        <h4>🍽️ <%= r.name %>
-                                        </h4>
-                                        <p>Cuisine: <strong>
-                                                <%= r.cuisine %>
-                                            </strong> | Rating: ⭐ <%= r.rating %>
-                                        </p>
-                                        <p style="font-size: 0.85rem; color: #666;">
-                                            <%= r.address %>
-                                        </p>
-                                        <% if (r.description) { %>
-                                            <p><strong>Description:</strong>
-                                                <%= r.description %>
+                                    <div class="favorite-item managed-restaurant-card">
+                                        <h4 title="<%= r.name %>">🍽️ <%= r.name %></h4>
+                                        <div class="managed-restaurant-details">
+                                            <p class="restaurant-card-field">
+                                                <strong>Cuisine:</strong><span class="restaurant-card-value" title="<%= r.cuisine %>"><%= r.cuisine %></span>
                                             </p>
-                                            <% } %>
+                                            <p class="restaurant-card-field">
+                                                <strong>Address:</strong><span class="restaurant-card-value" title="<%= r.address %>"><%= r.address %></span>
+                                            </p>
+                                            <p class="restaurant-description">
+                                                <strong>Description:</strong><span class="restaurant-card-value" title="<%= r.description || '' %>"><%= r.description || 'No description provided yet.' %></span>
+                                            </p>
+                                            <div class="restaurant-rating">⭐ <%= r.rating || 'New' %> / 5.0</div>
+                                        </div>
                                                 <a href="/owner/restaurants/<%= r.id %>/menu" class="btn-secondary"
                                                     style="font-size: 0.8rem; padding: 4px 10px; margin-top: 5px;">Manage
                                                     Menu</a>
@@ -145,17 +144,15 @@
                             </div>
                             <div class="form-group">
                                 <label>Restaurant Image:</label>
-                                <div
-                                    style="border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa; margin-top: 5px;">
+                                <div class="restaurant-upload-dropzone">
                                     <input type="file" name="imageFile" accept="image/*" id="fileInput"
-                                        style="display: none;"
-                                        onchange="document.getElementById('fileName').innerText = this.files.length > 0 ? this.files[0].name : 'Файл не выбран'">
+                                        style="display: none;">
+                                    <img id="restaurantImagePreview" class="restaurant-upload-preview"
+                                        alt="Selected restaurant image preview">
                                     <button type="button"
                                         style="background-color: #ffc800; color: #000; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;"
                                         onclick="document.getElementById('fileInput').click();">📸 Выбрать фото</button>
-                                    <p id="fileName"
-                                        style="margin-top: 10px; color: #666; font-size: 14px; margin-bottom: 0;">Файл
-                                        не выбран</p>
+                                    <p id="restaurantImageHint" class="restaurant-upload-hint">Image preview will appear here.</p>
                                 </div>
                             </div>
                             <button type="submit" class="btn-primary"
@@ -298,6 +295,33 @@
             if (targetTab) targetTab.classList.add('active');
             if (btn) btn.classList.add('active');
             if (tabId === 'reservations-tab') markBookingsAsRead();
+        }
+
+        const restaurantImageInput = document.getElementById('fileInput');
+        const restaurantImagePreview = document.getElementById('restaurantImagePreview');
+        const restaurantImageHint = document.getElementById('restaurantImageHint');
+        let restaurantImagePreviewUrl = null;
+
+        if (restaurantImageInput && restaurantImagePreview && restaurantImageHint) {
+            restaurantImageInput.addEventListener('change', () => {
+                const imageFile = restaurantImageInput.files && restaurantImageInput.files[0];
+                if (restaurantImagePreviewUrl) {
+                    URL.revokeObjectURL(restaurantImagePreviewUrl);
+                    restaurantImagePreviewUrl = null;
+                }
+
+                if (!imageFile || (imageFile.type && !imageFile.type.startsWith('image/'))) {
+                    restaurantImagePreview.removeAttribute('src');
+                    restaurantImagePreview.style.display = 'none';
+                    restaurantImageHint.style.display = 'block';
+                    return;
+                }
+
+                restaurantImagePreviewUrl = URL.createObjectURL(imageFile);
+                restaurantImagePreview.src = restaurantImagePreviewUrl;
+                restaurantImagePreview.style.display = 'block';
+                restaurantImageHint.style.display = 'none';
+            });
         }
 
         setInterval(checkForNewBookings, 10000);

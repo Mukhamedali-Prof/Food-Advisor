@@ -41,19 +41,18 @@
                                             alt="<%= r.name %>" class="restaurant-thumb">
                                     </div>
                                     <div class="restaurant-info">
-                                        <h3>
-                                            <%= r.name %>
-                                        </h3>
-                                        <p class="restaurant-cuisine"><strong>Cuisine:</strong>
-                                            <%= r.cuisine %>
+                                        <h3 title="<%= r.name %>"><%= r.name %></h3>
+                                        <p class="restaurant-card-field restaurant-cuisine">
+                                            <strong>Cuisine:</strong><span class="restaurant-card-value" title="<%= r.cuisine %>"><%= r.cuisine %></span>
                                         </p>
-                                        <p class="restaurant-address"><strong>Address:</strong>
-                                            <%= r.address %>
+                                        <p class="restaurant-card-field restaurant-address">
+                                            <strong>Address:</strong><span class="restaurant-card-value" title="<%= r.address %>"><%= r.address %></span>
+                                        </p>
+                                        <p class="restaurant-description">
+                                            <strong>Description:</strong><span class="restaurant-card-value" title="<%= r.description || '' %>"><%= r.description || 'No description provided yet.' %></span>
                                         </p>
                                         <div class="restaurant-rating">
-                                            <span class="star">⭐</span> <strong>
-                                                <%= r.rating %>
-                                            </strong> / 5.0
+                                            ⭐ <%= r.rating || 'New' %> / 5.0
                                         </div>
                                     </div>
                                 </div>
