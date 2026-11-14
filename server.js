@@ -770,6 +770,29 @@ app.post('/owner/bookings/:id/status', async (req, res) => {
     }
 });
 
+app.post('/owner/bookings/:id/delete', async (req, res) => {
+    try {
+        const owner = await getOwnerFromRequest(req);
+        if (!owner) return res.redirect('/?modal=login');
+
+        const bookingId = Number(req.params.id);
+        if (!Number.isSafeInteger(bookingId) || bookingId <= 0) {
+            return res.status(400).send('Invalid booking ID.');
+        }
+
+        await db.query(`
+            DELETE b FROM bookings b 
+            JOIN restaurants r ON r.id = b.restaurant_id 
+            WHERE b.id = ? AND r.owner_id = ?
+        `, [bookingId, owner.id]);
+
+        return res.redirect('/owner-dashboard?tab=reservations');
+    } catch (err) {
+        console.error('Failed to delete booking:', err);
+        return sendRestaurantError(res, 'Failed to delete booking', err);
+    }
+});
+
 app.get('/admin', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
