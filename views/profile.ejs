@@ -4,41 +4,54 @@
         <div class="dashboard-card-wrapper">
             <h2>Customer Dashboard</h2>
 
+            <% if (typeof statusMessage !== 'undefined' && statusMessage) { %>
+                <div style="background-color: #e8f5e9; color: #2e7d32; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <%= statusMessage %>
+                </div>
+            <% } %>
+            <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+                <div style="background-color: #ffebee; color: #c62828; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <%= errorMessage %>
+                </div>
+            <% } %>
+
+            <% const currentTab = typeof activeTab !== 'undefined' ? activeTab : 'profile-tab'; %>
+
             <div class="profile-layout">
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-box">
-                        <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                        <% if (currentUser.avatar && currentUser.avatar.trim() !== '') { %>
                             <img src="<%= currentUser.avatar %>" alt="Avatar" class="profile-avatar-large">
-                            <% } else { %>
-                                <div class="profile-avatar-letter">
-                                    <%= currentUser.email ? currentUser.email.charAt(0) : currentUser.username.charAt(0)
-                                        %>
-                                </div>
-                                <% } %>
-                                    <h3 style="margin: 5px 0 0 0; color: #000;">
-                                        <%= currentUser.username %>
-                                    </h3>
-                                    <span class="role-badge">
-                                        <%= currentUser.role %>
-                                    </span>
+                        <% } else { %>
+                            <div class="profile-avatar-letter">
+                                <%= currentUser.email ? currentUser.email.charAt(0).toUpperCase() : currentUser.username.charAt(0).toUpperCase() %>
+                            </div>
+                        <% } %>
+                        <h3 style="margin: 5px 0 0 0; color: #000;">
+                            <%= currentUser.username %>
+                        </h3>
+                        <span class="role-badge">
+                            <%= currentUser.role %>
+                        </span>
                     </div>
 
                     <nav class="profile-nav">
-                        <button type="button" class="profile-nav-btn active"
+                        <button type="button" class="profile-nav-btn <%= currentTab === 'profile-tab' ? 'active' : '' %>"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('favorites-tab', this)">Favorite
-                            Venues</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('reviews-tab', this)">My
-                            Reviews</button>
-                        <button type="button" class="profile-nav-btn"
+                        <button type="button" class="profile-nav-btn <%= currentTab === 'favorites-tab' ? 'active' : '' %>"
+                            onclick="showTab('favorites-tab', this)">Favorite Restaurants</button>
+                        <button type="button" class="profile-nav-btn <%= currentTab === 'reviews-tab' ? 'active' : '' %>"
+                            onclick="showTab('reviews-tab', this)">My Reviews</button>
+                        <button type="button" class="profile-nav-btn <%= currentTab === 'reservations-tab' ? 'active' : '' %>"
                             onclick="showTab('reservations-tab', this)">Bookings & Orders</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">Security
-                            Settings</button>
+                        <button type="button" class="profile-nav-btn <%= currentTab === 'security-tab' ? 'active' : '' %>"
+                            onclick="showTab('security-tab', this)">Security Settings</button>
                     </nav>
                 </aside>
 
                 <main class="profile-content">
-                    <div id="profile-tab" class="tab-pane active">
+                    <!-- 1. PROFILE INFO -->
+                    <div id="profile-tab" class="tab-pane <%= currentTab === 'profile-tab' ? 'active' : '' %>">
                         <h3>My Profile Details</h3>
 
                         <form action="/profile/update" method="POST" enctype="multipart/form-data"
@@ -51,10 +64,9 @@
                                 <label>Upload New Avatar from Device:</label>
                                 <input type="file" name="avatarFile" accept="image/*"
                                     style="padding: 8px 0; border: none; background: transparent;">
-                                <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
-                                    PNG, WEBP</small>
+                                <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG, PNG, WEBP</small>
                             </div>
-                            <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                            <% if (currentUser.avatar && currentUser.avatar.trim() !== '') { %>
                                 <div class="form-group" style="margin-bottom: 15px;">
                                     <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
                                         class="btn-primary"
@@ -63,69 +75,227 @@
                                         Delete Avatar
                                     </button>
                                 </div>
-                                <% } %>
-                                    <button type="submit" class="btn-primary">Save Profile Changes</button>
+                            <% } %>
+                            <button type="submit" class="btn-primary">Save Profile Changes</button>
                         </form>
                     </div>
 
-                    <div id="favorites-tab" class="tab-pane">
-                        <h3>Saved Favorite Restaurants</h3>
-                        <% if (favorites && favorites.length> 0) { %>
-                            <div class="favorites-grid">
-                                <% favorites.forEach(r=> { %>
-                                    <div class="favorite-item">
-                                        <h4>⭐ <%= r.name %>
-                                        </h4>
-                                        <p>Cuisine: <strong>
-                                                <%= r.cuisine %>
-                                            </strong> | Rating: ⭐ <%= r.rating %>
-                                        </p>
-                                        <button type="button" class="btn-secondary"
-                                            style="font-size: 0.8rem; padding: 4px 10px;">Remove from Favorites</button>
+                    <!-- 2. FAVORITE RESTAURANTS -->
+                    <div id="favorites-tab" class="tab-pane <%= currentTab === 'favorites-tab' ? 'active' : '' %>">
+                        <h3>Favorite Restaurants</h3>
+                        <% if (favorites && favorites.length > 0) { %>
+                            <div class="restaurants-grid">
+                                <% favorites.forEach(rest => { %>
+                                    <div class="restaurant-card" onclick="window.location.href='/restaurant/<%= rest.id %>'"
+                                        style="cursor: pointer; display: flex; flex-direction: column; justify-content: space-between;">
+                                        <div>
+                                            <div class="restaurant-image-wrapper">
+                                                <img src="<%= rest.image && rest.image.trim() !== '' ? rest.image : '/images/No%20image.png' %>"
+                                                    alt="<%= rest.name %>" class="restaurant-thumb">
+                                            </div>
+                                            <div class="restaurant-info">
+                                                <h3><%= rest.name %></h3>
+                                                <p class="restaurant-cuisine"><strong>Cuisine:</strong> <%= rest.cuisine %></p>
+                                                <p class="restaurant-address"><strong>Address:</strong> <%= rest.address %></p>
+                                                <div class="restaurant-rating">
+                                                    <span class="star">⭐</span> <strong><%= rest.rating || 'New' %></strong> / 5.0
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="padding: 0 15px 15px 15px;" onclick="event.stopPropagation();">
+                                            <form action="/profile/favorites/remove/<%= rest.id %>" method="POST"
+                                                onsubmit="return confirm('Remove <%= rest.name %> from Favorite Restaurants?');">
+                                                <button type="submit" class="btn-secondary"
+                                                    style="width: 100%; font-size: 0.85rem; padding: 6px 10px; color: #ff4757; border-color: #ff4757;">
+                                                    Remove from Favorites
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
-                                    <% }) %>
+                                <% }) %>
                             </div>
-                            <% } else { %>
-                                <p>You haven't added any restaurants to your favorites list yet.</p>
-                                <% } %>
+                        <% } else { %>
+                            <p>You haven't added any restaurants to your Favorite Restaurants list yet.</p>
+                        <% } %>
                     </div>
 
-                    <div id="reviews-tab" class="tab-pane">
-                        <h3>My Submitted Reviews</h3>
-                        <% if (myReviews && myReviews.length> 0) { %>
+                    <!-- 3. MY REVIEWS -->
+                    <div id="reviews-tab" class="tab-pane <%= currentTab === 'reviews-tab' ? 'active' : '' %>">
+                        <h3>My Reviews</h3>
+                        <% if (myReviews && myReviews.length > 0) { %>
                             <div class="reviews-list">
-                                <% myReviews.forEach(rev=> { %>
-                                    <div class="review-item">
-                                        <div class="review-header">
-                                            <strong>
-                                                <%= rev.restaurant_name %>
-                                            </strong>
-                                            <span style="color: #f39c12;">⭐ <%= rev.rating %>/5</span>
+                                <% myReviews.forEach(rev => { %>
+                                    <div class="review-item" style="<%= rev.is_hidden ? 'opacity: 0.75; background-color: #f8f9fa;' : '' %>">
+                                        <!-- Режим просмотра отзыва -->
+                                        <div id="review-view-<%= rev.id %>">
+                                            <div class="review-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                                <div>
+                                                    <a href="/restaurant/<%= rev.restaurant_id %>" style="text-decoration: none; color: inherit;">
+                                                        <strong><%= rev.restaurant_name %></strong>
+                                                    </a>
+                                                    <% if (rev.is_hidden) { %>
+                                                        <span style="color: #e67e22; font-size: 0.8rem; font-weight: bold; margin-left: 8px;">[HIDDEN]</span>
+                                                    <% } %>
+                                                </div>
+                                                <span style="color: #f39c12; font-weight: bold;">⭐ <%= rev.rating %>/5</span>
+                                            </div>
+                                            <p style="margin: 10px 0;">"<%= rev.comment %>"</p>
+
+                                            <div class="review-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                                <button type="button" class="btn-secondary"
+                                                    style="font-size: 0.8rem; padding: 4px 10px;"
+                                                    onclick="toggleEditBlock('review', <%= rev.id %>, true)">
+                                                    Edit
+                                                </button>
+
+                                                <form action="/profile/reviews/toggle-hide/<%= rev.id %>" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn-secondary"
+                                                        style="font-size: 0.8rem; padding: 4px 10px; color: #e67e22; border-color: #e67e22;">
+                                                        <%= rev.is_hidden ? 'Make Public (Show)' : 'Hide Review' %>
+                                                    </button>
+                                                </form>
+
+                                                <form action="/profile/reviews/delete/<%= rev.id %>" method="POST" style="display: inline;"
+                                                    onsubmit="return confirm('Delete this review permanently? Restaurant rating will be updated.');">
+                                                    <button type="submit" class="btn-secondary"
+                                                        style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
-                                        <p>"<%= rev.comment %>"</p>
-                                        <div class="review-actions">
-                                            <button type="button" class="btn-secondary"
-                                                style="font-size: 0.8rem; padding: 4px 10px;">Edit</button>
-                                            <button type="button" class="btn-secondary"
-                                                style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
-                                        </div>
+
+                                        <!-- Режим редактирования отзыва -->
+                                        <form id="review-edit-<%= rev.id %>" action="/profile/reviews/edit/<%= rev.id %>" method="POST"
+                                            style="display: none; margin-top: 10px;">
+                                            <h4 style="margin: 0 0 10px 0;">Edit Review for <%= rev.restaurant_name %></h4>
+                                            <div class="form-group" style="margin-bottom: 10px;">
+                                                <label>Rating (1 to 5):</label>
+                                                <select name="rating" required style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
+                                                    <% for (let star = 5; star >= 1; star--) { %>
+                                                        <option value="<%= star %>" <%= Number(rev.rating) === star ? 'selected' : '' %>>
+                                                            <%= star %> ⭐
+                                                        </option>
+                                                    <% } %>
+                                                </select>
+                                            </div>
+                                            <div class="form-group" style="margin-bottom: 10px;">
+                                                <label>Comment:</label>
+                                                <textarea name="comment" rows="3" required
+                                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"><%= rev.comment %></textarea>
+                                            </div>
+                                            <div style="display: flex; gap: 8px;">
+                                                <button type="submit" class="btn-primary" style="font-size: 0.85rem; padding: 6px 14px;">Save Changes</button>
+                                                <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;"
+                                                    onclick="toggleEditBlock('review', <%= rev.id %>, false)">Cancel</button>
+                                            </div>
+                                        </form>
                                     </div>
-                                    <% }) %>
+                                <% }) %>
                             </div>
-                            <% } else { %>
-                                <p>You haven't submitted any dining reviews yet.</p>
-                                <% } %>
+                        <% } else { %>
+                            <p>You haven't submitted any dining reviews yet.</p>
+                        <% } %>
                     </div>
 
-                    <div id="reservations-tab" class="tab-pane">
-                        <h3>Table Bookings & Orders</h3>
-                        <p>Track your active bookings and dining history.</p>
-                        <div class="role-card" style="border-left-color: #ffc800;">
-                            <p>No active table reservations found.</p>
-                        </div>
+                    <!-- 4. BOOKINGS & ORDERS -->
+                    <div id="reservations-tab" class="tab-pane <%= currentTab === 'reservations-tab' ? 'active' : '' %>">
+                        <h3>Bookings & Orders</h3>
+                        <p>Track your active bookings, edit reservation details, or cancel upcoming visits.</p>
+
+                        <% if (typeof myBookings !== 'undefined' && myBookings && myBookings.length > 0) { %>
+                            <div class="reviews-list" style="margin-top: 15px;">
+                                <% myBookings.forEach(booking => { %>
+                                    <div class="review-item">
+                                        <!-- Режим просмотра брони -->
+                                        <div id="booking-view-<%= booking.id %>">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                <a href="/restaurant/<%= booking.restaurant_id %>" style="text-decoration: none; color: inherit;">
+                                                    <strong style="font-size: 1.05rem;"><%= booking.restaurant_name %></strong>
+                                                </a>
+                                                <%
+                                                    let statusBg = '#fff3cd';
+                                                    let statusColor = '#856404';
+                                                    if (booking.status === 'confirmed') { statusBg = '#d4edda'; statusColor = '#155724'; }
+                                                    if (booking.status === 'cancelled') { statusBg = '#f8d7da'; statusColor = '#721c24'; }
+                                                %>
+                                                <span style="padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: <%= statusBg %>; color: <%= statusColor %>;">
+                                                    <%= booking.status %>
+                                                </span>
+                                            </div>
+
+                                            <p style="margin: 4px 0; font-size: 0.9rem; color: #555;">
+                                                <strong>Address:</strong> <%= booking.restaurant_address %>
+                                            </p>
+                                            <p style="margin: 4px 0 12px 0; font-size: 0.95rem;">
+                                                <strong>Date:</strong> <%= booking.booking_date %> &nbsp;|&nbsp;
+                                                <strong>Time:</strong> <%= booking.start_time %> – <%= booking.end_time %> &nbsp;|&nbsp;
+                                                <strong>Guests:</strong> <%= booking.guest_count %>
+                                            </p>
+
+                                            <% if (booking.status !== 'cancelled') { %>
+                                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                                    <button type="button" class="btn-secondary"
+                                                        style="font-size: 0.8rem; padding: 5px 12px;"
+                                                        onclick="toggleEditBlock('booking', <%= booking.id %>, true)">
+                                                        Edit Booking
+                                                    </button>
+
+                                                    <form action="/profile/bookings/cancel/<%= booking.id %>" method="POST" style="display: inline;"
+                                                        onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                                                        <button type="submit" class="btn-secondary"
+                                                            style="font-size: 0.8rem; padding: 5px 12px; color: #ff4757; border-color: #ff4757;">
+                                                            Cancel Booking
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            <% } %>
+                                        </div>
+
+                                        <!-- Форма редактирования брони -->
+                                        <% if (booking.status !== 'cancelled') { %>
+                                            <form id="booking-edit-<%= booking.id %>" action="/profile/bookings/edit/<%= booking.id %>" method="POST"
+                                                style="display: none; margin-top: 10px;">
+                                                <h4 style="margin: 0 0 10px 0;">Modify Booking at <%= booking.restaurant_name %></h4>
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                                                    <div class="form-group" style="margin-bottom: 0;">
+                                                        <label>Date:</label>
+                                                        <input type="date" name="booking_date" min="<%= minBookingDate %>"
+                                                            value="<%= booking.booking_date %>" required>
+                                                    </div>
+                                                    <div class="form-group" style="margin-bottom: 0;">
+                                                        <label>Start Time:</label>
+                                                        <input type="time" name="start_time" value="<%= booking.start_time %>" required>
+                                                    </div>
+                                                    <div class="form-group" style="margin-bottom: 0;">
+                                                        <label>End Time:</label>
+                                                        <input type="time" name="end_time" value="<%= booking.end_time %>" required>
+                                                    </div>
+                                                    <div class="form-group" style="margin-bottom: 0;">
+                                                        <label>Guests:</label>
+                                                        <input type="number" name="guest_count" min="1" max="20"
+                                                            value="<%= booking.guest_count %>" required>
+                                                    </div>
+                                                </div>
+                                                <div style="display: flex; gap: 8px;">
+                                                    <button type="submit" class="btn-primary" style="font-size: 0.85rem; padding: 6px 14px;">Save Booking</button>
+                                                    <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;"
+                                                        onclick="toggleEditBlock('booking', <%= booking.id %>, false)">Cancel</button>
+                                                </div>
+                                            </form>
+                                        <% } %>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        <% } else { %>
+                            <div class="role-card" style="border-left-color: #ffc800;">
+                                <p>No table reservations found.</p>
+                            </div>
+                        <% } %>
                     </div>
 
-                    <div id="security-tab" class="tab-pane">
+                    <!-- 5. SECURITY SETTINGS -->
+                    <div id="security-tab" class="tab-pane <%= currentTab === 'security-tab' ? 'active' : '' %>">
                         <h3>Security & Password Settings</h3>
                         <form action="/profile/security" method="POST" class="security-form">
                             <div class="form-group">
@@ -163,6 +333,15 @@
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
         }
+
+        function toggleEditBlock(type, id, isEditing) {
+            const viewEl = document.getElementById(`${type}-view-${id}`);
+            const editEl = document.getElementById(`${type}-edit-${id}`);
+            if (viewEl && editEl) {
+                viewEl.style.display = isEditing ? 'none' : 'block';
+                editEl.style.display = isEditing ? 'block' : 'none';
+            }
+        }
     </script>
 
-    <%- include('partials/footer') %>
+<%- include('partials/footer') %>
