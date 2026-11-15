@@ -25,8 +25,8 @@
                 <% if (currentUser.role==='owner' ) { %>
                     <a href="/owner-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
                     <% } else if (currentUser.role==='customer' ) { %>
-                        <a href="/my-reviews">My Reviews</a>
-                        <a href="/favorites" title="My Favorites">Favorites</a>
+                        <a href="/profile?tab=reviews">My Reviews</a>
+                        <a href="/profile?tab=favorites" title="My Favorites">Favorites</a>
                         <a href="/customer-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
                         <% } %>
                             <% } %>
@@ -41,12 +41,13 @@
                 <% const profileLink=(currentUser.role==='owner' ) ? '/owner-dashboard' : (currentUser.role==='admin'
                     ? '/admin' : '/profile' ); %>
                     <a href="<%= profileLink %>" class="user-avatar-link" title="Go to Profile">
-                        <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                        <% if (currentUser.avatar && currentUser.avatar.trim() !=='' && currentUser.avatar !=='null' ) {
+                            %>
                             <img src="<%= currentUser.avatar %>" alt="<%= currentUser.username %>" class="user-avatar">
                             <% } else { %>
                                 <div class="user-avatar-letter">
-                                    <%= currentUser.email ? currentUser.email.charAt(0) : currentUser.username.charAt(0)
-                                        %>
+                                    <%= currentUser.email ? currentUser.email.charAt(0).toUpperCase() :
+                                        currentUser.username.charAt(0).toUpperCase() %>
                                 </div>
                                 <% } %>
                     </a>
@@ -147,22 +148,27 @@
         function openModal(modalId) {
             document.getElementById(modalId).classList.add('active');
         }
+
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
+
         function switchModal(closeId, openId) {
             closeModal(closeId);
             openModal(openId);
         }
+
         window.onclick = function (event) {
             if (event.target.classList.contains('modal-overlay')) {
                 event.target.classList.remove('active');
             }
         }
+
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const modal = urlParams.get('modal');
             const error = urlParams.get('error');
+
             if (modal) {
                 openModal(modal + 'Modal');
                 if (error) {

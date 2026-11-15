@@ -3,8 +3,8 @@
     <div class="container" style="max-width: 1100px;">
         <div class="dashboard-card-wrapper">
             <h2>Administrator Control Panel</h2>
-
             <div class="profile-layout">
+
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-box">
                         <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
@@ -14,19 +14,18 @@
                                     <%= currentUser.email ? currentUser.email.charAt(0).toUpperCase() : 'A' %>
                                 </div>
                                 <% } %>
-                        <h3 style="margin: 5px 0 0 0; color: #000;">
-                            <%= currentUser.username %>
-                        </h3>
-                        <span class="role-badge" style="background-color: #e8eaf6; color: #3742fa;">
-                            Administrator
-                        </span>
+                                    <h3 style="margin: 5px 0 0 0; color: #000;">
+                                        <%= currentUser.username %>
+                                    </h3>
+                                    <span class="role-badge" style="background-color: #e8eaf6; color: #3742fa;">
+                                        Administrator </span>
                     </div>
 
                     <nav class="profile-nav">
                         <button type="button" class="profile-nav-btn active"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('users-tab', this)">Manage
-                            Users (<%= users.length %>)</button>
+                        <button type="button" class="profile-nav-btn" onclick="showTab('users-tab', this)">Manage Users
+                            (<%= users.length %>)</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">Manage
                             Restaurants (<%= restaurants.length %>)</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('reviews-tab', this)">Manage
@@ -37,10 +36,9 @@
                 </aside>
 
                 <main class="profile-content">
-                    <!-- Profile Info Tab -->
+
                     <div id="profile-tab" class="tab-pane active">
                         <h3>My Profile Details</h3>
-
                         <form action="/profile/update" method="POST" enctype="multipart/form-data"
                             style="margin-top: 20px;">
                             <div class="form-group">
@@ -60,8 +58,7 @@
                                         class="btn-primary"
                                         style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
                                         onclick="return confirm('Are you sure you want to delete your profile photo?');">
-                                        Delete Avatar
-                                    </button>
+                                        Delete Avatar </button>
                                 </div>
                                 <% } %>
                                     <button type="submit" class="btn-primary">Save Profile Changes</button>
@@ -72,18 +69,16 @@
                         <h3>User Accounts Management</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Block user access or completely
                             delete accounts.</p>
-
                         <% if (users && users.length> 0) { %>
                             <div class="reviews-list">
                                 <% users.forEach(u=> { %>
                                     <div class="review-item"
-                                        style="display: flex; justify-content: space-between; align-items: center;">
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fff;">
                                         <div>
                                             <strong>
                                                 <%= u.username %>
                                             </strong> (<%= u.email %>)<br>
-                                                <span style="font-size: 0.85rem; color: #666;">
-                                                    Role: <strong>
+                                                <span style="font-size: 0.85rem; color: #666;"> Role: <strong>
                                                         <%= u.role %>
                                                     </strong>
                                                     <% if (u.is_blocked) { %>
@@ -92,17 +87,19 @@
                                                 </span>
                                         </div>
                                         <% if (u.id !==currentUser.id) { %>
-                                            <div style="display: flex; gap: 8px;">
-                                                <form action="/admin/users/toggle/<%= u.id %>" method="POST">
+                                            <div style="display: flex; gap: 8px; width: 220px;">
+                                                <form action="/admin/users/toggle/<%= u.id %>" method="POST"
+                                                    style="flex: 1; margin: 0; display: flex;">
                                                     <button type="submit" class="btn-secondary"
-                                                        style="font-size: 0.8rem; padding: 4px 10px; color: <%= u.is_blocked ? '#2ed573' : '#ffa502' %>; border-color: <%= u.is_blocked ? '#2ed573' : '#ffa502' %>;">
+                                                        style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; background: #fff; color: #000; border: 2px solid #000;">
                                                         <%= u.is_blocked ? 'Unblock' : 'Block' %>
                                                     </button>
                                                 </form>
                                                 <form action="/admin/users/delete/<%= u.id %>" method="POST"
+                                                    style="flex: 1; margin: 0; display: flex;"
                                                     onsubmit="return confirm('Permanently delete this user from database?');">
                                                     <button type="submit" class="btn-secondary"
-                                                        style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
+                                                        style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; border-width: 2px; color: #ff4757; border-color: #ff4757;">Delete</button>
                                                 </form>
                                             </div>
                                             <% } else { %>
@@ -116,47 +113,69 @@
                                 <% } %>
                     </div>
 
-                    <!-- Restaurants Tab -->
                     <div id="restaurants-tab" class="tab-pane">
                         <h3>Restaurants Management</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Hide venues from public search
                             or delete them permanently.</p>
-
                         <% if (restaurants && restaurants.length> 0) { %>
                             <div class="reviews-list">
                                 <% restaurants.forEach(r=> { %>
-                                    <div class="review-item">
-                                        <div style="margin-bottom: 8px;">
-                                            <strong style="font-size: 1.05rem;">⭐ <%= r.name %></strong>
-                                            <% if (r.is_hidden) { %>
-                                                <span style="color: #ffa502; font-size: 0.8rem; margin-left: 8px;">[HIDDEN]</span>
-                                                <% } %>
+                                    <div class="review-item"
+                                        style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; border: 1px solid #ddd; padding: 15px; border-radius: 6px; background: #fff;">
+
+                                        <div
+                                            style="flex-shrink: 0; width: 110px; height: 80px; border-radius: 4px; overflow: hidden; background: #f0f0f0;">
+                                            <img src="<%= r.image ? r.image : '/images/No%20image.png' %>"
+                                                alt="<%= r.name %>"
+                                                style="width: 100%; height: 100%; object-fit: cover;">
                                         </div>
-                                        <p style="margin: 4px 0;"><strong>Cuisine:</strong>
-                                            <%= r.cuisine %>
-                                        </p>
-                                        <p style="margin: 4px 0;"><strong>Rating:</strong>
-                                            <%= r.rating != null ? '⭐ ' + r.rating + ' / 5.0' : 'No rating yet' %>
-                                        </p>
-                                        <p style="margin: 4px 0;"><strong>Address:</strong>
-                                            <%= r.address %>
-                                        </p>
-                                        <p style="margin: 4px 0;"><strong>Description:</strong>
-                                            <%= r.description ? r.description : 'No description provided.' %>
-                                        </p>
-                                        <div class="review-actions" style="margin-top: 12px; display: flex; gap: 8px;">
-                                            <form action="/admin/restaurants/toggle/<%= r.id %>" method="POST">
+
+                                        <div style="flex-grow: 1; min-width: 0;">
+                                            <div
+                                                style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                                <strong style="font-size: 1.05rem;">
+                                                    <%= r.name %>
+                                                </strong>
+                                                <% if (r.is_hidden) { %>
+                                                    <span
+                                                        style="color: #ffa502; font-size: 0.8rem; font-weight: bold;">[HIDDEN]</span>
+                                                    <% } %>
+                                            </div>
+                                            <p style="margin: 2px 0; font-size: 0.9rem; color: #555;">
+                                                <strong>Cuisine:</strong>
+                                                <%= r.cuisine %>
+                                            </p>
+                                            <p style="margin: 2px 0; font-size: 0.9rem; color: #555;">
+                                                <strong>Rating:</strong>
+                                                <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ? ''
+                                                    + Number(r.rating).toFixed(1) + ' / 5.0' : 'New' %>
+                                            </p>
+                                            <p
+                                                style="margin: 2px 0; font-size: 0.85rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <strong>Address:</strong>
+                                                <%= r.address %>
+                                            </p>
+                                        </div>
+
+                                        <div
+                                            style="display: flex; flex-direction: column; gap: 8px; width: 160px; flex-shrink: 0;">
+                                            <form action="/admin/restaurants/toggle/<%= r.id %>" method="POST"
+                                                style="margin: 0; display: flex;">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px; color: <%= r.is_hidden ? '#2ed573' : '#ffa502' %>; border-color: <%= r.is_hidden ? '#2ed573' : '#ffa502' %>;">
+                                                    style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; background: #fff; color: #000; border: 2px solid #000;">
                                                     <%= r.is_hidden ? 'Show restaurant' : 'Hide restaurant' %>
                                                 </button>
                                             </form>
                                             <form action="/admin/restaurants/delete/<%= r.id %>" method="POST"
+                                                style="margin: 0; display: flex;"
                                                 onsubmit="return confirm('Permanently delete this restaurant?');">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete restaurant</button>
+                                                    style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; border-width: 2px; color: #ff4757; border-color: #ff4757;">
+                                                    Delete restaurant
+                                                </button>
                                             </form>
                                         </div>
+
                                     </div>
                                     <% }) %>
                             </div>
@@ -165,45 +184,62 @@
                                 <% } %>
                     </div>
 
-                    <!-- Reviews Tab -->
                     <div id="reviews-tab" class="tab-pane">
                         <h3>Review Moderation</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Hide inappropriate feedback or
                             remove it entirely.</p>
-
                         <% if (reviews && reviews.length> 0) { %>
                             <div class="reviews-list">
                                 <% reviews.forEach(rev=> { %>
-                                    <div class="review-item">
-                                        <div class="review-header">
-                                            <span>
-                                                <strong style="font-size: 1.05rem;"><%= rev.restaurant_name %></strong>
+                                    <div class="review-item"
+                                        style="margin-bottom: 15px; border: 1px solid #ddd; padding: 15px; border-radius: 6px; background: #fff; position: relative;">
+
+                                        <div
+                                            style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                            <div>
+                                                <strong style="font-size: 1.05rem;">
+                                                    <%= rev.restaurant_name %>
+                                                </strong>
                                                 <% if (rev.is_hidden) { %>
-                                                    <span style="color: #ffa502; font-size: 0.8rem; margin-left: 8px;">[HIDDEN]</span>
+                                                    <span
+                                                        style="color: #ffa502; font-size: 0.8rem; font-weight: bold; margin-left: 8px;">[HIDDEN]</span>
                                                     <% } %>
-                                            </span>
-                                            <span style="color: #f39c12;">⭐ <%= rev.rating %>/5</span>
+                                            </div>
+
+                                            <div class="badge-rating"
+                                                style="background: #fff8e1; border: 1px solid #ffe0b2; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; color: #b7791f;">
+                                                Rating: <%= (rev.rating !==null && rev.rating !==undefined && rev.rating
+                                                    !=='' ) ? Number(rev.rating).toFixed(1) : 'New' %> / 5.0
+                                            </div>
                                         </div>
-                                        <p style="margin: 4px 0;"><strong>Author:</strong>
+
+                                        <p style="margin: 4px 0; font-size: 0.9rem; color: #555;">
+                                            <strong>Author:</strong>
                                             <%= rev.username %>
                                         </p>
-                                        <p style="margin: 4px 0;"><strong>Date:</strong>
-                                            <%= rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-GB') : 'Unknown' %>
+                                        <p style="margin: 4px 0; font-size: 0.9rem; color: #555;"><strong>Date:</strong>
+                                            <%= rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-GB')
+                                                : 'Unknown' %>
                                         </p>
-                                        <p style="margin: 4px 0;"><strong>Comment:</strong>
-                                            "<%= rev.comment %>"
+                                        <p style="margin: 6px 0 12px 0; font-size: 0.95rem; color: #222;">
+                                            <strong>Comment:</strong> "<%= rev.comment %>"
                                         </p>
-                                        <div class="review-actions" style="margin-top: 12px; display: flex; gap: 8px;">
-                                            <form action="/admin/reviews/toggle/<%= rev.id %>" method="POST">
+
+                                        <div class="review-actions" style="display: flex; gap: 8px; width: 100%;">
+                                            <form action="/admin/reviews/toggle/<%= rev.id %>" method="POST"
+                                                style="flex: 1; margin: 0; display: flex;">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px; color: <%= rev.is_hidden ? '#2ed573' : '#ffa502' %>; border-color: <%= rev.is_hidden ? '#2ed573' : '#ffa502' %>;">
+                                                    style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; background: #fff; color: #000; border: 2px solid #000;">
                                                     <%= rev.is_hidden ? 'Show review' : 'Hide review' %>
                                                 </button>
                                             </form>
                                             <form action="/admin/reviews/delete/<%= rev.id %>" method="POST"
+                                                style="flex: 1; margin: 0; display: flex;"
                                                 onsubmit="return confirm('Permanently delete this review?');">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete review</button>
+                                                    style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; border-width: 2px; color: #ff4757; border-color: #ff4757;">
+                                                    Delete review
+                                                </button>
                                             </form>
                                         </div>
                                     </div>
@@ -229,8 +265,7 @@
                             </div>
                             <button type="submit" class="btn-primary">Update Security Settings</button>
                         </form>
-                        <hr style="margin: 30px 0; border: none; border-top: 1px solid #dcdde1;">
-
+                        <hr style="margin: 10px 0; border: none; border-top: 1px solid #dcdde1;">
                         <div style="background: #fff5f5; border: 1px solid #ff4757; padding: 20px; border-radius: 8px;">
                             <h4 style="margin-top: 0; color: #ff4757;">Terminate Session</h4>
                             <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Log out of your Food Advisor
@@ -240,6 +275,7 @@
                                 Out from Account</a>
                         </div>
                     </div>
+
                 </main>
             </div>
         </div>
@@ -251,7 +287,7 @@
             document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
-        }
+        } 
     </script>
 
     <%- include('partials/footer') %>

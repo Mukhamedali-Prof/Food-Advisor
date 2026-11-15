@@ -1238,3 +1238,122 @@ body.dark-theme .restaurant-description-section {
 .short-desc-box p {
     margin: 0;
 }
+
+.managed-restaurant-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.managed-restaurant-img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 10px;
+}
+
+.managed-restaurants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.horizontal-restaurant-card {
+    background: #fff;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.restaurant-card-main {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.restaurant-card-img-wrapper {
+    flex-shrink: 0;
+}
+
+.horizontal-restaurant-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+}
+
+.restaurant-card-info {
+    flex-grow: 1;
+}
+
+.restaurant-card-info h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+}
+
+.restaurant-card-actions {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.restaurant-card-actions .action-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 4px;
+    box-sizing: border-box;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.restaurant-card-actions .delete-btn {
+    border-color: #c62828 !important;
+    color: #c62828 !important;
+    background: transparent;
+}
+
+.restaurant-card-actions .delete-btn:hover {
+    background: #fff5f5;
+}
+
+@media (max-width: 768px) {
+    .restaurant-card-main {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .horizontal-restaurant-img {
+        width: 100px;
+        height: 100px;
+    }
+
+    .restaurant-card-actions {
+        flex-direction: column;
+    }
+}
+
+.horizontal-restaurant-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start !important;
+    height: auto !important;
+    min-height: unset !important;
+    margin-bottom: 15px;
+    padding: 12px 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}

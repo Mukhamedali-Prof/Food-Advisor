@@ -2,7 +2,6 @@
 
     <div class="container">
         <div class="dashboard-card-wrapper">
-
             <div class="restaurant-detail-header">
                 <div class="detail-image-container">
                     <div class="detail-image-wrapper">
@@ -10,27 +9,25 @@
                             alt="<%= restaurant.name %>" class="detail-thumb">
                     </div>
                 </div>
-
                 <div class="detail-info">
                     <h2>
                         <%= restaurant.name %>
                     </h2>
-
                     <div class="meta-tags">
                         <span class="badge-cuisine">Cuisine: <%= restaurant.cuisine %></span>
-                        <span class="badge-rating">Rating: <%= restaurant.rating || 'New' %> / 5.0</span>
+                        <span class="badge-rating">
+                            Rating: <%= (restaurant.rating !==null && restaurant.rating !==undefined &&
+                                restaurant.rating !=='' ) ? Number(restaurant.rating).toFixed(1) : 'New' %> / 5.0
+                        </span>
                     </div>
-
                     <div class="info-row">
                         <p><strong>Address:</strong>
                             <%= restaurant.address %>
                         </p>
                     </div>
-
                     <div class="info-row">
                         <p><strong>Working Hours:</strong> 10:00 AM - 11:00 PM</p>
                     </div>
-
                     <% if (restaurant.description) { %>
                         <div class="info-row">
                             <p><strong>Description:</strong>
@@ -42,75 +39,110 @@
                                 <p><em>No description provided yet.</em></p>
                             </div>
                             <% } %>
+
+                                <% if (typeof currentUser !=='undefined' && currentUser && currentUser.role==='customer'
+                                    ) { %>
+                                    <form action="/favorites/toggle/<%= restaurant.id %>" method="POST"
+                                        style="display: inline-block; margin-top: 10px;">
+                                        <button type="submit" class="btn-secondary"
+                                            style="width: 240px; text-align: center; font-weight: bold; background: <%= isFavorite ? '#fff' : '#ffc800' %>; color: #000;">
+                                            <%= isFavorite ? 'Remove from Favorites' : 'Add to Favorites' %>
+                                        </button>
+                                    </form>
+                                    <% } %>
                 </div>
             </div>
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
+            <!-- ЕДИНСТВЕННЫЙ БЛОК БРОНИРОВАНИЯ С ВАЛИДАЦИЕЙ -->
             <div class="section-block">
                 <h3>Table Reservation</h3>
-                <% if (bookingMessage) { %>
-                    <p role="status" style="padding: 12px; border-radius: 6px; background: #fff3cd;">
-                        <%= bookingMessage %>
-                    </p>
-                <% } %>
-                <% if (currentUser && currentUser.role === 'customer') { %>
-                <form action="/restaurant/<%= restaurant.id %>/book" method="POST" class="booking-form">
-                    <div class="form-group">
-                        <label>Date:</label>
-                        <input type="date" name="book_date" min="<%= minBookingDate %>" required class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label>Start Time:</label>
-                        <input type="time" name="start_time" required class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label>End Time:</label>
-                        <input type="time" name="end_time" required class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label>Guests Count:</label>
-                        <input type="number" name="guests" min="1" max="20" value="2" required class="form-control">
-                    </div>
-                    <button type="submit" class="btn-primary">Confirm Booking</button>
-                </form>
-                <% } else { %>
-                    <p>Please <a href="/?modal=login">log in with a customer account</a> to request a reservation.</p>
-                <% } %>
+                <% if (currentUser && currentUser.role==='customer' ) { %>
+                    <form action="/restaurant/<%= restaurant.id %>/book" method="POST" class="booking-form"
+                        onsubmit="return validateNewBooking(event)">
+
+                        <!-- Блок для вывода ошибки прямо в форме -->
+                        <div id="new-booking-error"
+                            style="display: none; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 8px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 10px;">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date:</label>
+                            <input type="date" id="new-booking-date" name="book_date" min="<%= minBookingDate %>"
+                                max="<%= (() => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split('T')[0]; })() %>"
+                                required class="form-control">
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group" style="flex: 1; margin: 0;">
+                                <label>Start Time:</label>
+                                <input type="time" id="new-booking-start" name="start_time" required
+                                    class="form-control">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin: 0;">
+                                <label>End Time:</label>
+                                <input type="time" id="new-booking-end" name="end_time" required class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Guests Count:</label>
+                            <input type="number" id="new-booking-guests" name="guests" min="1" max="20" value="2"
+                                required class="form-control">
+                        </div>
+
+                        <button type="submit" class="btn-primary">Confirm Booking</button>
+
+                        <% if (bookingMessage) { %>
+                            <p role="status"
+                                style="margin-top: 15px; padding: 10px; border-radius: 6px; background: #fff3cd; color: #856404;">
+                                <%= bookingMessage %>
+                            </p>
+                            <% } %>
+                    </form>
+                    <% } else { %>
+                        <p>Please <a href="/?modal=login">log in with a customer account</a> to request a reservation.
+                        </p>
+                        <% } %>
             </div>
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
             <div class="section-block">
                 <h3>Menu</h3>
-                <% if (menuItems && menuItems.length > 0) { %>
+                <% if (menuItems && menuItems.length> 0) { %>
                     <div class="favorites-grid">
                         <% menuItems.forEach(function(item) { %>
                             <div class="favorite-item">
-                                <h4><%= item.name %> — $<%= Number(item.price).toFixed(2) %></h4>
+                                <h4>
+                                    <%= item.name %> — $<%= Number(item.price).toFixed(2) %>
+                                </h4>
                                 <% if (item.description) { %>
-                                    <p><%= item.description %></p>
-                                <% } %>
+                                    <p>
+                                        <%= item.description %>
+                                    </p>
+                                    <% } %>
                             </div>
-                        <% }) %>
+                            <% }) %>
                     </div>
-                <% } else { %>
-                    <p>This restaurant has not published its menu yet.</p>
-                <% } %>
+                    <% } else { %>
+                        <p>This restaurant has not published its menu yet.</p>
+                        <% } %>
             </div>
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
+            <!-- БЛОК ОТЗЫВОВ И ЗАЩИЩЕННАЯ ФОРМА НАПИСАНИЯ -->
             <div class="section-block">
                 <h3>Customer Reviews (<%= reviews.length %>)</h3>
-
                 <% if (reviews && reviews.length> 0) { %>
                     <% reviews.forEach(function(rev) { %>
                         <div class="review-card"
                             style="border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
                             <strong>
                                 <%= rev.username %>
-                            </strong> — Rating: <%= rev.rating %> / 5
+                            </strong> — Rating: <%= Number(rev.rating).toFixed(1) %> / 5
                                 <p>
                                     <%= rev.comment %>
                                 </p>
@@ -121,21 +153,30 @@
                                 <% } %>
 
                                     <% if (currentUser && currentUser.role==='customer' ) { %>
-                                        <h4 style="margin-top: 20px;">Write a Review</h4>
-                                        <form action="/restaurant/<%= restaurant.id %>/review" method="POST">
-                                            <div class="form-group">
-                                                <label>Rating (1 to 5):</label>
-                                                <input type="number" name="rating" min="1" max="5" required
-                                                    class="form-control">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Comment:</label>
-                                                <textarea name="comment" rows="3" required
-                                                    class="form-control"></textarea>
-                                            </div>
-                                            <button type="submit" class="btn-primary">Submit Review</button>
-                                        </form>
-                                        <% } %>
+                                        <% const userAlreadyReviewed=reviews.some(r=> r.user_id === currentUser.id);
+                                            %>
+
+                                            <% if (userAlreadyReviewed) { %>
+                                                <p style="margin-top: 20px; color: #666; font-style: italic;">You have
+                                                    already shared your review for this restaurant.</p>
+                                                <% } else { %>
+                                                    <h4 style="margin-top: 20px;">Write a Review</h4>
+                                                    <form action="/restaurant/<%= restaurant.id %>/review"
+                                                        method="POST">
+                                                        <div class="form-group">
+                                                            <label>Rating (1 to 5):</label>
+                                                            <input type="number" name="rating" min="1" max="5" required
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label>Comment:</label>
+                                                            <textarea name="comment" rows="3" required
+                                                                class="form-control"></textarea>
+                                                        </div>
+                                                        <button type="submit" class="btn-primary">Submit Review</button>
+                                                    </form>
+                                                    <% } %>
+                                                        <% } %>
             </div>
 
             <div style="margin-top: 30px;">
@@ -143,5 +184,58 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function validateNewBooking(event) {
+            const dateInput = document.getElementById('new-booking-date').value;
+            const startTime = document.getElementById('new-booking-start').value;
+            const endTime = document.getElementById('new-booking-end').value;
+            const guestsInput = document.getElementById('new-booking-guests').value;
+            const errorDiv = document.getElementById('new-booking-error');
+
+            function showError(msg) {
+                errorDiv.textContent = msg;
+                errorDiv.style.display = 'block';
+            }
+
+            if (startTime && endTime && startTime >= endTime) {
+                event.preventDefault();
+                showError('End time must be later than start time.');
+                return false;
+            }
+
+            const guests = parseInt(guestsInput, 10);
+            if (isNaN(guests) || guests < 1 || guests > 20) {
+                event.preventDefault();
+                showError('Number of guests must be between 1 and 20.');
+                return false;
+            }
+
+            if (dateInput) {
+                const selectedDate = new Date(dateInput);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const maxDate = new Date();
+                maxDate.setFullYear(maxDate.getFullYear() + 1);
+                maxDate.setHours(23, 59, 59, 999);
+
+                if (selectedDate < today) {
+                    event.preventDefault();
+                    showError('Cannot select a past date.');
+                    return false;
+                }
+
+                if (selectedDate > maxDate) {
+                    event.preventDefault();
+                    showError('Bookings can only be made up to 1 year in advance.');
+                    return false;
+                }
+            }
+
+            errorDiv.style.display = 'none';
+            return true;
+        }
+    </script>
 
     <%- include('partials/footer') %>

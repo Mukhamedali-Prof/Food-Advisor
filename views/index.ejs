@@ -20,27 +20,57 @@
             <div class="section-block">
                 <h3>Top Rated Restaurants</h3>
                 <% if (topRestaurants && topRestaurants.length> 0) { %>
-                    <div class="restaurants-grid">
+                    <div class="managed-restaurants-list">
                         <% topRestaurants.forEach(rest=> { %>
-                            <div class="restaurant-card" onclick="window.location.href='/restaurant/<%= rest.id %>'"
-                                style="cursor: pointer;">
-                                <div class="restaurant-image-wrapper">
-                                    <img src="<%= rest.image ? rest.image : '/images/No%20image.png' %>"
-                                        alt="<%= rest.name %>" class="restaurant-thumb">
+                            <div class="horizontal-restaurant-card"
+                                onclick="window.location.href='/restaurant/<%= rest.id %>'"
+                                style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; cursor: pointer;">
+
+                                <div
+                                    style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
+                                    ⭐ <%= (rest.rating !==null && rest.rating !==undefined && rest.rating !=='' ) ?
+                                        Number(rest.rating).toFixed(1) : 'New' %> / 5.0
                                 </div>
-                                <div class="restaurant-info">
-                                    <h3 title="<%= rest.name %>"><%= rest.name %></h3>
-                                    <p class="restaurant-card-field restaurant-cuisine">
-                                        <strong>Cuisine:</strong><span class="restaurant-card-value" title="<%= rest.cuisine %>"><%= rest.cuisine %></span>
-                                    </p>
-                                    <p class="restaurant-card-field restaurant-address">
-                                        <strong>Address:</strong><span class="restaurant-card-value" title="<%= rest.address %>"><%= rest.address %></span>
-                                    </p>
-                                    <p class="restaurant-description">
-                                        <strong>Description:</strong><span class="restaurant-card-value" title="<%= rest.description || '' %>"><%= rest.description || 'No description provided yet.' %></span>
-                                    </p>
-                                    <div class="restaurant-rating">⭐ <%= rest.rating || 'New' %> / 5.0</div>
+
+                                <div class="restaurant-card-main"
+                                    style="display: flex; align-items: flex-start; margin-bottom: 0;">
+                                    <div class="restaurant-card-img-wrapper"
+                                        style="height: 95px; width: 95px; min-width: 95px;">
+                                        <img src="<%= rest.image ? rest.image : '/images/No%20image.png' %>"
+                                            alt="<%= rest.name %>" class="horizontal-restaurant-img"
+                                            style="height: 95px; width: 95px; object-fit: cover;">
+                                    </div>
+
+                                    <div class="restaurant-card-info"
+                                        style="width: 100%; margin-left: 12px; padding-right: 70px;">
+                                        <h4 title="<%= rest.name %>" style="margin: 0 0 4px 0;">
+                                            <%= rest.name %>
+                                        </h4>
+
+                                        <div class="managed-restaurant-details"
+                                            style="display: flex; flex-direction: column; gap: 2px;">
+                                            <p class="restaurant-card-field" style="margin: 0;">
+                                                <strong>Cuisine:</strong> <span class="restaurant-card-value"
+                                                    title="<%= rest.cuisine %>">
+                                                    <%= rest.cuisine %>
+                                                </span>
+                                            </p>
+                                            <p class="restaurant-card-field" style="margin: 0;">
+                                                <strong>Address:</strong> <span class="restaurant-card-value"
+                                                    title="<%= rest.address %>">
+                                                    <%= rest.address %>
+                                                </span>
+                                            </p>
+                                            <p class="restaurant-description" style="margin: 0;">
+                                                <strong>Description:</strong> <span class="restaurant-card-value"
+                                                    title="<%= rest.description || '' %>">
+                                                    <%= rest.description || 'No description provided yet.' %>
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
+
                             </div>
                             <% }) %>
                     </div>

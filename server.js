@@ -38,7 +38,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// NEW (checklist: session security): blocked users and deleted accounts instantly lose their session
 app.use(async (req, res, next) => {
     const email = req.cookies && req.cookies.user_email;
     if (!email) return next();
@@ -82,6 +81,42 @@ function sendRestaurantError(res, title, err, status = 500) {
     `);
 }
 
+app.post('/favorites/toggle/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== 'customer') {
+            return res.status(403).send('Only customers can manage favorites.');
+        }
+
+        const restaurantId = Number(req.params.id);
+        const userId = users[0].id;
+
+        const [existing] = await db.query(
+            'SELECT * FROM favorites WHERE user_id = ? AND restaurant_id = ?',
+            [userId, restaurantId]
+        );
+
+        if (existing.length > 0) {
+            await db.query('DELETE FROM favorites WHERE user_id = ? AND restaurant_id = ?', [userId, restaurantId]);
+        } else {
+            await db.query('INSERT INTO favorites (user_id, restaurant_id) VALUES (?, ?)', [userId, restaurantId]);
+        }
+
+        if (req.query.redirect === 'profile') {
+            const tab = req.query.tab ? `?tab=${req.query.tab}` : '';
+            return res.redirect(`/profile${tab}`);
+        }
+
+        return res.redirect(`/restaurant/${restaurantId}`);
+    } catch (err) {
+        console.error('Failed to toggle favorite:', err);
+        return res.status(500).send('Server error');
+    }
+});
+
 function handleRestaurantImageUpload(req, res, next) {
     upload.single('imageFile')(req, res, (err) => {
         if (!err) return next();
@@ -123,7 +158,6 @@ function isValidBookingTime(value) {
     return true;
 }
 
-// NEW: saves a notification for a user (never breaks the main action if it fails)
 async function addNotification(userId, type, message) {
     try {
         await db.query('INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)', [userId, type, message]);
@@ -132,7 +166,6 @@ async function addNotification(userId, type, message) {
     }
 }
 
-// NEW (checklist: cascade logic): runs a query and ignores it only if the table does not exist
 async function safeQuery(sql, params) {
     try {
         await db.query(sql, params);
@@ -141,18 +174,24 @@ async function safeQuery(sql, params) {
     }
 }
 
-// NEW (checklist: review deletion updates the restaurant rating)
-// Hidden reviews are not counted. A restaurant without visible reviews gets rating 0.
 async function recalcRestaurantRating(restaurantId) {
-    await db.query(`
-        UPDATE restaurants SET rating = COALESCE((
-            SELECT ROUND(AVG(rating), 1) FROM reviews
-            WHERE restaurant_id = ? AND (is_hidden = 0 OR is_hidden IS NULL)
-        ), 0) WHERE id = ?
-    `, [restaurantId, restaurantId]);
+    try {
+        const [result] = await db.query(
+            'SELECT AVG(rating) as avgRating FROM reviews WHERE restaurant_id = ? AND is_hidden = 0',
+            [restaurantId]
+        );
+
+        const newRating = result[0].avgRating ? Number(result[0].avgRating).toFixed(1) : 0;
+
+        await db.query(
+            'UPDATE restaurants SET rating = ? WHERE id = ?',
+            [newRating, restaurantId]
+        );
+    } catch (err) {
+        console.error('Failed to recalculate restaurant rating:', err);
+    }
 }
 
-// NEW (checklist: cascade logic): deletes a restaurant with its menu, reviews, favorites and bookings
 async function deleteRestaurantCascade(restaurantId) {
     await safeQuery('DELETE FROM reviews WHERE restaurant_id = ?', [restaurantId]);
     await safeQuery('DELETE FROM favorites WHERE restaurant_id = ?', [restaurantId]);
@@ -161,8 +200,6 @@ async function deleteRestaurantCascade(restaurantId) {
     await db.query('DELETE FROM restaurants WHERE id = ?', [restaurantId]);
 }
 
-// NEW (checklist: cascade logic): deletes a user with reviews, favorites, bookings and notifications.
-// If the user owns restaurants, they are deleted with everything linked to them.
 async function deleteUserCascade(userId) {
     const [owned] = await db.query('SELECT id FROM restaurants WHERE owner_id = ?', [userId]);
     for (const restaurant of owned) {
@@ -182,9 +219,6 @@ async function deleteUserCascade(userId) {
     }
 }
 
-// NEW: collects the notifications of a user
-// - "hidden" notices are built from the current is_hidden state, so they disappear as soon as the item is shown again
-// - "deleted" notices are read from the notifications table
 async function getNotificationsForUser(user) {
     const items = [];
 
@@ -243,9 +277,7 @@ app.get('/', async (req, res) => {
                 (SELECT COUNT(*) FROM users) as usersCount,
                 (SELECT COUNT(*) FROM reviews) as reviewsCount
         `);
-        // NEW: hidden restaurants are not shown to visitors
         const [topRestaurants] = await db.query('SELECT * FROM restaurants WHERE (is_hidden = 0 OR is_hidden IS NULL) ORDER BY rating DESC LIMIT 3');
-        // NEW: hidden reviews, and reviews of hidden restaurants, are not shown to visitors
         const [recentReviews] = await db.query(`
             SELECT reviews.*, users.username, restaurants.name as restaurant_name 
             FROM reviews 
@@ -313,6 +345,48 @@ app.get('/search', async (req, res) => {
     }
 });
 
+app.post('/restaurant/:id/review', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0) return res.redirect('/');
+
+        const currentUser = users[0];
+        const restaurantId = req.params.id;
+        const { rating, comment } = req.body;
+
+        const [existingReview] = await db.query(`
+            SELECT * FROM reviews WHERE user_id = ? AND restaurant_id = ?
+        `, [currentUser.id, restaurantId]);
+
+        if (existingReview.length > 0) {
+            return res.status(400).send('You have already left a review for this restaurant. Only one review per restaurant is allowed.');
+        }
+
+        const ratingNum = parseInt(rating, 10);
+        if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+            return res.status(400).send('Invalid rating. Must be between 1 and 5.');
+        }
+
+        await db.query(`
+            INSERT INTO reviews (user_id, restaurant_id, rating, comment) 
+            VALUES (?, ?, ?, ?)
+        `, [currentUser.id, restaurantId, ratingNum, comment]);
+
+        await recalcRestaurantRating(restaurantId);
+
+        res.redirect(`/restaurant/${restaurantId}`);
+    } catch (err) {
+        console.error("Ошибка при создании отзыва:", err);
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).send('You have already reviewed this restaurant.');
+        }
+        res.status(500).send('Server error: ' + err.message);
+    }
+});
+
 app.get('/restaurant/:id', async (req, res) => {
     try {
         const restaurantId = Number(req.params.id);
@@ -327,24 +401,37 @@ app.get('/restaurant/:id', async (req, res) => {
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
 
         const [reviews] = await db.query(`
-            SELECT reviews.*, users.username
-            FROM reviews
-            JOIN users ON reviews.user_id = users.id
-            WHERE reviews.restaurant_id = ? AND (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL)
+            SELECT reviews.*, users.username 
+            FROM reviews 
+            JOIN users ON reviews.user_id = users.id 
+            WHERE reviews.restaurant_id = ? AND (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL) 
             ORDER BY reviews.id DESC
         `, [restaurantId]);
+
         const [menuItems] = await db.query(
             'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
             [restaurantId]
         );
 
         let currentUser = null;
+        let isFavorite = false;
+
         if (req.cookies.user_email) {
             const [users] = await db.query(
                 'SELECT id, username, email, role, avatar FROM users WHERE email = ?',
                 [req.cookies.user_email]
             );
-            if (users.length > 0) currentUser = users[0];
+            if (users.length > 0) {
+                currentUser = users[0];
+
+                if (currentUser.role === 'customer') {
+                    const [favCheck] = await db.query(
+                        'SELECT * FROM favorites WHERE user_id = ? AND restaurant_id = ?',
+                        [currentUser.id, restaurantId]
+                    );
+                    isFavorite = favCheck.length > 0;
+                }
+            }
         }
 
         return res.render('restaurant-detail', {
@@ -352,6 +439,7 @@ app.get('/restaurant/:id', async (req, res) => {
             reviews,
             menuItems,
             currentUser,
+            isFavorite,
             minBookingDate: localDateString(),
             bookingMessage: ({
                 sent: 'Your booking request was sent. The restaurant owner has been notified.',
@@ -367,51 +455,50 @@ app.get('/restaurant/:id', async (req, res) => {
 
 app.post('/restaurant/:id/book', async (req, res) => {
     try {
-        const restaurantId = Number(req.params.id);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
-            return res.status(404).send('Restaurant not found.');
-        }
-
         const userEmail = req.cookies.user_email;
         if (!userEmail) return res.redirect('/?modal=login');
 
-        const [users] = await db.query(
-            'SELECT id, role FROM users WHERE email = ?',
-            [userEmail]
-        );
-        if (users.length === 0 || users[0].role !== 'customer') {
-            return res.status(403).send('Please sign in with a customer account to make a booking.');
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0) return res.redirect('/');
+        const currentUser = users[0];
+
+        const restaurantId = req.params.id;
+        const { book_date, start_time, end_time, guests } = req.body;
+
+        const guestCount = parseInt(guests, 10);
+        if (isNaN(guestCount) || guestCount < 1 || guestCount > 20) {
+            return res.status(400).send('Invalid number of guests. Must be between 1 and 20.');
         }
 
-        const [restaurants] = await db.query(
-            'SELECT id FROM restaurants WHERE id = ? AND (is_hidden = 0 OR is_hidden IS NULL)',
-            [restaurantId]
-        );
-        if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
-
-        const { book_date: bookingDate, start_time: startTime, end_time: endTime } = req.body;
-        const guestCount = Number(req.body.guests);
-        if (!isValidBookingDate(bookingDate) || !isValidBookingTime(startTime) ||
-            !isValidBookingTime(endTime) || endTime <= startTime ||
-            !Number.isInteger(guestCount) || guestCount < 1 || guestCount > 20) {
-            return res.redirect(`/restaurant/${restaurantId}?booking=invalid`);
+        if (start_time >= end_time) {
+            return res.status(400).send('Invalid time range: End time must be later than start time.');
         }
 
-        await db.query(
-            `INSERT INTO bookings
-                (restaurant_id, customer_id, booking_date, start_time, end_time, guest_count, status)
-             VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-            [restaurantId, users[0].id, bookingDate, startTime, endTime, guestCount]
-        );
+        const selectedDate = new Date(book_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-        return res.redirect(`/restaurant/${restaurantId}?booking=sent`);
+        const maxAllowedDate = new Date();
+        maxAllowedDate.setFullYear(maxAllowedDate.getFullYear() + 1);
+        maxAllowedDate.setHours(23, 59, 59, 999);
+
+        if (selectedDate < today) {
+            return res.status(400).send('Invalid date: Cannot select a past date.');
+        }
+
+        if (selectedDate > maxAllowedDate) {
+            return res.status(400).send('Invalid date: Bookings cannot be made more than 1 year in advance.');
+        }
+
+        await db.query(`
+            INSERT INTO bookings (customer_id, restaurant_id, booking_date, start_time, end_time, guest_count, status) 
+            VALUES (?, ?, ?, ?, ?, ?, 'pending')
+        `, [currentUser.id, restaurantId, book_date, start_time, end_time, guestCount]);
+
+        res.redirect('/profile?tab=reservations');
     } catch (err) {
-        console.error('Failed to create booking:', err);
-        const restaurantId = Number(req.params.id);
-        if (Number.isSafeInteger(restaurantId) && restaurantId > 0) {
-            return res.redirect(`/restaurant/${restaurantId}?booking=failed`);
-        }
-        return res.status(500).send('Could not save this booking.');
+        console.error("Ошибка при создании бронирования:", err);
+        res.status(500).send('Server error: ' + err.message);
     }
 });
 
@@ -437,10 +524,7 @@ app.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ? AND password = ?', [email, password]);
-        // NEW (checklist 1): administrators cannot log in through the client form,
-        // they get the same error as a wrong password. Admin login is only available at /admin.
         if (users.length > 0 && users[0].role !== 'admin') {
-            // NEW: blocked users cannot log in
             if (users[0].is_blocked) {
                 return res.redirect('/?modal=login&error=' + encodeURIComponent('Your account has been blocked'));
             }
@@ -480,24 +564,29 @@ app.get('/owner-dashboard', async (req, res) => {
         }
 
         const [bookings] = await db.query(`
-            SELECT b.id, b.restaurant_id, b.customer_id,
-                   DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-                   TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
-                   TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
-                   b.guest_count, b.status, b.owner_read_at,
-                   r.name AS restaurant_name, u.username AS customer_name, u.email AS customer_email
-            FROM bookings b
-            JOIN restaurants r ON r.id = b.restaurant_id
-            JOIN users u ON u.id = b.customer_id
-            WHERE r.owner_id = ?
+            SELECT b.id, b.restaurant_id, b.customer_id, 
+                DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, 
+                TIME_FORMAT(b.start_time, '%H:%i') AS start_time, 
+                TIME_FORMAT(b.end_time, '%H:%i') AS end_time, 
+                b.guest_count, b.status, b.owner_read_at, 
+                r.name AS restaurant_name, 
+                u.username AS customer_name, 
+                u.email AS customer_email, 
+                u.avatar AS customer_avatar
+            FROM bookings b 
+            JOIN restaurants r ON r.id = b.restaurant_id 
+            JOIN users u ON u.id = b.customer_id 
+            WHERE r.owner_id = ? 
             ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
         `, [currentUser.id]);
+
         const [unreadRows] = await db.query(`
-            SELECT COUNT(*) AS unread_count
-            FROM bookings b
-            JOIN restaurants r ON r.id = b.restaurant_id
-            WHERE r.owner_id = ? AND b.owner_read_at IS NULL
+            SELECT COUNT(*) AS unread_count 
+            FROM bookings b 
+            JOIN restaurants r ON r.id = b.restaurant_id 
+            WHERE r.owner_id = ? AND b.status = 'pending'
         `, [currentUser.id]);
+
         const activeTab = req.query.tab === 'reservations' ? 'reservations-tab' : 'profile-tab';
 
         return res.render('owner-profile', {
@@ -508,12 +597,12 @@ app.get('/owner-dashboard', async (req, res) => {
             activeTab,
             stats: { restaurantsCount: myRestaurants.length }
         });
+
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error on owner dashboard');
     }
 });
-
 app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -585,7 +674,6 @@ app.post('/owner/restaurants/delete/:id', async (req, res) => {
             return res.status(400).send('Invalid restaurant ID.');
         }
 
-        // NEW (cascade logic): make sure the restaurant belongs to this owner, then delete it with all linked data
         const [mine] = await db.query(
             'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
             [restaurantId, users[0].id]
@@ -878,51 +966,45 @@ app.post('/owner/bookings/read-all', async (req, res) => {
 
 app.post('/owner/bookings/:id/status', async (req, res) => {
     try {
-        const owner = await getOwnerFromRequest(req);
-        if (!owner) return res.redirect('/?modal=login');
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
 
-        const bookingId = Number(req.params.id);
-        const status = req.body.status;
-        if (!Number.isSafeInteger(bookingId) || bookingId <= 0 ||
-            !['confirmed', 'cancelled'].includes(status)) {
-            return res.status(400).send('Invalid booking update.');
+        const bookingId = req.params.id;
+        const { status } = req.body;
+
+        if (status !== 'confirmed' && status !== 'cancelled') {
+            return res.status(400).send('Invalid status');
         }
 
-        const [result] = await db.query(`
-            UPDATE bookings b
-            JOIN restaurants r ON r.id = b.restaurant_id
-            SET b.status = ?, b.owner_read_at = COALESCE(b.owner_read_at, CURRENT_TIMESTAMP)
-            WHERE b.id = ? AND r.owner_id = ? AND b.status = 'pending'
-        `, [status, bookingId, owner.id]);
-        if (result.affectedRows === 0) return res.status(404).send('Pending booking not found.');
+        await db.query(`
+            UPDATE bookings 
+            SET status = ? 
+            WHERE id = ?
+        `, [status, bookingId]);
 
-        return res.redirect('/owner-dashboard?tab=reservations');
+        res.redirect('/owner-dashboard?tab=reservations');
     } catch (err) {
-        console.error('Failed to update booking status:', err);
-        return sendRestaurantError(res, 'Failed to update booking', err);
+        console.error("Ошибка при обновлении статуса:", err);
+        res.status(500).send('Server error: ' + err.message);
     }
 });
 
 app.post('/owner/bookings/:id/delete', async (req, res) => {
     try {
-        const owner = await getOwnerFromRequest(req);
-        if (!owner) return res.redirect('/?modal=login');
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
 
-        const bookingId = Number(req.params.id);
-        if (!Number.isSafeInteger(bookingId) || bookingId <= 0) {
-            return res.status(400).send('Invalid booking ID.');
-        }
+        const bookingId = req.params.id;
 
         await db.query(`
-            DELETE b FROM bookings b 
-            JOIN restaurants r ON r.id = b.restaurant_id 
-            WHERE b.id = ? AND r.owner_id = ?
-        `, [bookingId, owner.id]);
+            DELETE FROM bookings 
+            WHERE id = ?
+        `, [bookingId]);
 
-        return res.redirect('/owner-dashboard?tab=reservations');
+        res.redirect('/owner-dashboard?tab=reservations');
     } catch (err) {
-        console.error('Failed to delete booking:', err);
-        return sendRestaurantError(res, 'Failed to delete booking', err);
+        console.error("Ошибка при удалении бронирования владельцем:", err);
+        res.status(500).send('Server error: ' + err.message);
     }
 });
 
@@ -957,7 +1039,6 @@ app.post('/admin', async (req, res) => {
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', [email, password]);
         if (users.length > 0) {
-            // NEW: blocked admin accounts cannot log in
             if (users[0].is_blocked) {
                 return res.render('admin-login', { error: 'Your account has been blocked.', currentUser: null });
             }
@@ -983,8 +1064,6 @@ app.post('/admin/users/delete/:id', async (req, res) => {
         const userId = Number(req.params.id);
         if (!Number.isSafeInteger(userId) || userId <= 0) return res.redirect('/admin');
 
-        // NEW (cascade logic): removes the user's reviews, favorites, bookings, notifications
-        // and, for an owner, their restaurants with everything linked to them
         await deleteUserCascade(userId);
         res.redirect('/admin');
     } catch (err) {
@@ -1037,13 +1116,10 @@ app.post('/admin/restaurants/delete/:id', async (req, res) => {
         const restaurantId = Number(req.params.id);
         if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) return res.redirect('/admin');
 
-        // NEW: remember who owned the restaurant before it is deleted
         const [target] = await db.query('SELECT name, owner_id FROM restaurants WHERE id = ?', [restaurantId]);
 
-        // NEW (cascade logic): removes the menu, reviews, favorites and bookings of the restaurant
         await deleteRestaurantCascade(restaurantId);
 
-        // NEW: tell the owner that the restaurant was deleted
         if (target.length > 0 && target[0].owner_id) {
             await addNotification(
                 target[0].owner_id,
@@ -1065,10 +1141,20 @@ app.post('/admin/reviews/toggle/:id', async (req, res) => {
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
 
-        const [targetRev] = await db.query('SELECT is_hidden FROM reviews WHERE id = ?', [req.params.id]);
+        const reviewId = Number(req.params.id);
+        if (!Number.isSafeInteger(reviewId) || reviewId <= 0) return res.redirect('/admin');
+
+        const [targetRev] = await db.query('SELECT is_hidden, restaurant_id FROM reviews WHERE id = ?', [reviewId]);
+
         if (targetRev.length > 0) {
-            await db.query('UPDATE reviews SET is_hidden = ? WHERE id = ?', [targetRev[0].is_hidden ? 0 : 1, req.params.id]);
+            const newHiddenStatus = targetRev[0].is_hidden ? 0 : 1;
+            const restaurantId = targetRev[0].restaurant_id;
+
+            await db.query('UPDATE reviews SET is_hidden = ? WHERE id = ?', [newHiddenStatus, reviewId]);
+
+            await recalcRestaurantRating(restaurantId);
         }
+
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
@@ -1082,7 +1168,6 @@ app.post('/admin/reviews/delete/:id', async (req, res) => {
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
 
-        // NEW: remember the author and the restaurant before the review is deleted
         const [target] = await db.query(`
             SELECT reviews.user_id, reviews.restaurant_id, restaurants.name AS restaurant_name
             FROM reviews
@@ -1093,10 +1178,8 @@ app.post('/admin/reviews/delete/:id', async (req, res) => {
         await db.query('DELETE FROM reviews WHERE id = ?', [req.params.id]);
 
         if (target.length > 0) {
-            // NEW (checklist 5): update the overall rating of the restaurant after the review is deleted
             await recalcRestaurantRating(target[0].restaurant_id);
 
-            // NEW: tell the author that the review was deleted
             await addNotification(
                 target[0].user_id,
                 'review_deleted',
@@ -1116,6 +1199,191 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
+app.post('/profile/bookings/edit/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0) return res.redirect('/');
+        const currentUser = users[0];
+
+        const bookingId = req.params.id;
+        const { book_date, start_time, end_time, guests } = req.body;
+
+        const [bookings] = await db.query(`
+            SELECT * FROM bookings 
+            WHERE id = ? AND customer_id = ?
+        `, [bookingId, currentUser.id]);
+
+        if (bookings.length === 0) {
+            return res.status(404).send('Booking not found');
+        }
+
+        if (bookings[0].status === 'confirmed') {
+            return res.status(403).send('Action forbidden: Confirmed bookings cannot be edited.');
+        }
+
+        const guestCount = parseInt(guests, 10);
+        if (isNaN(guestCount) || guestCount < 1 || guestCount > 20) {
+            return res.status(400).send('Invalid number of guests. Must be between 1 and 20.');
+        }
+
+        if (start_time >= end_time) {
+            return res.status(400).send('Invalid time range: End time must be later than start time.');
+        }
+
+        const selectedDate = new Date(book_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const maxAllowedDate = new Date();
+        maxAllowedDate.setFullYear(maxAllowedDate.getFullYear() + 1);
+        maxAllowedDate.setHours(23, 59, 59, 999);
+
+        if (selectedDate < today) {
+            return res.status(400).send('Invalid date: Cannot select a past date.');
+        }
+
+        if (selectedDate > maxAllowedDate) {
+            return res.status(400).send('Invalid date: Bookings cannot be made more than 1 year in advance.');
+        }
+
+        await db.query(`
+            UPDATE bookings 
+            SET booking_date = ?, start_time = ?, end_time = ?, guest_count = ? 
+            WHERE id = ? AND customer_id = ?
+        `, [book_date, start_time, end_time, guestCount, bookingId, currentUser.id]);
+
+        res.redirect('/profile?tab=reservations');
+    } catch (err) {
+        console.error("Ошибка при редактировании бронирования:", err);
+        res.status(500).send('Server error: ' + err.message);
+    }
+});
+
+app.post('/profile/reviews/delete/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== 'customer') {
+            return res.status(403).send('Access denied.');
+        }
+
+        const reviewId = Number(req.params.id);
+        if (!Number.isSafeInteger(reviewId) || reviewId <= 0) {
+            return res.status(400).send('Invalid review ID.');
+        }
+
+        const [target] = await db.query('SELECT restaurant_id FROM reviews WHERE id = ? AND user_id = ?', [reviewId, users[0].id]);
+        if (target.length === 0) {
+            return res.status(404).send('Review not found or not owned by you.');
+        }
+
+        const restaurantId = target[0].restaurant_id;
+
+        await db.query('DELETE FROM reviews WHERE id = ?', [reviewId]);
+
+        await recalcRestaurantRating(restaurantId);
+
+        return res.redirect('/profile?tab=reviews');
+    } catch (err) {
+        console.error('Failed to delete review:', err);
+        return res.status(500).send('Server error during review deletion');
+    }
+});
+
+app.post('/profile/reviews/edit/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== 'customer') {
+            return res.status(403).send('Access denied.');
+        }
+
+        const reviewId = Number(req.params.id);
+        const rating = Number(req.body.rating);
+        const comment = typeof req.body.comment === 'string' ? req.body.comment.trim() : '';
+
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5 || !comment) {
+            return res.status(400).send('Invalid rating or comment.');
+        }
+
+        const [target] = await db.query('SELECT restaurant_id FROM reviews WHERE id = ? AND user_id = ?', [reviewId, users[0].id]);
+        if (target.length === 0) {
+            return res.status(404).send('Review not found or not owned by you.');
+        }
+
+        const restaurantId = target[0].restaurant_id;
+
+        await db.query('UPDATE reviews SET rating = ?, comment = ? WHERE id = ?', [rating, comment, reviewId]);
+
+        await recalcRestaurantRating(restaurantId);
+
+        return res.redirect('/profile?tab=reviews');
+    } catch (err) {
+        console.error('Failed to update review:', err);
+        return res.status(500).send('Server error during review update');
+    }
+});
+
+app.post('/profile/reviews/toggle/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== 'customer') {
+            return res.status(403).send('Access denied.');
+        }
+
+        const reviewId = Number(req.params.id);
+        const [target] = await db.query('SELECT id, restaurant_id, is_hidden FROM reviews WHERE id = ? AND user_id = ?', [reviewId, users[0].id]);
+        if (target.length === 0) {
+            return res.status(404).send('Review not found.');
+        }
+
+        const restaurantId = target[0].restaurant_id;
+        const newHiddenState = target[0].is_hidden ? 0 : 1;
+
+        await db.query('UPDATE reviews SET is_hidden = ? WHERE id = ?', [newHiddenState, reviewId]);
+
+        await recalcRestaurantRating(restaurantId);
+
+        return res.redirect('/profile?tab=reviews');
+    } catch (err) {
+        console.error('Failed to toggle review visibility:', err);
+        return res.status(500).send('Server error');
+    }
+});
+
+app.post('/profile/bookings/delete/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0) return res.redirect('/');
+        const currentUser = users[0];
+
+        const bookingId = req.params.id;
+
+        await db.query(`
+            DELETE FROM bookings 
+            WHERE id = ? AND customer_id = ?
+        `, [bookingId, currentUser.id]);
+
+        res.redirect('/profile?tab=reservations');
+    } catch (err) {
+        console.error("Ошибка при удалении бронирования клиентом:", err);
+        res.status(500).send('Server error: ' + err.message);
+    }
+});
+
 app.get('/profile', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -1125,29 +1393,67 @@ app.get('/profile', async (req, res) => {
         if (users.length === 0) return res.redirect('/');
         const currentUser = users[0];
 
+        const [bookings] = await db.query(`
+            SELECT * FROM bookings 
+            WHERE customer_id = ? 
+            ORDER BY booking_date DESC
+        `, [currentUser.id]);
+
         if (currentUser.role === 'owner') return res.redirect('/owner-dashboard');
 
         const [myReviews] = await db.query(`
             SELECT reviews.*, restaurants.name as restaurant_name 
-            FROM reviews JOIN restaurants ON reviews.restaurant_id = restaurants.id 
-            WHERE reviews.user_id = ? ORDER BY reviews.id DESC
+            FROM reviews 
+            JOIN restaurants ON reviews.restaurant_id = restaurants.id 
+            WHERE reviews.user_id = ? 
+            ORDER BY reviews.id DESC
         `, [currentUser.id]);
 
         let favorites = [];
         try {
-            // NEW: hidden restaurants are not shown in the favorites of a customer
             const [favs] = await db.query(`
-                SELECT restaurants.* FROM favorites 
+                SELECT restaurants.* 
+                FROM favorites 
                 JOIN restaurants ON favorites.restaurant_id = restaurants.id 
-                WHERE favorites.user_id = ?
-                  AND (restaurants.is_hidden = 0 OR restaurants.is_hidden IS NULL)
+                WHERE favorites.user_id = ? AND (restaurants.is_hidden = 0 OR restaurants.is_hidden IS NULL)
             `, [currentUser.id]);
             favorites = favs;
         } catch (e) {
             favorites = [];
         }
 
-        res.render('profile', { currentUser, myReviews, favorites, stats: { ratedCount: myReviews.length } });
+        let myBookings = [];
+        try {
+            const [bookings] = await db.query(`
+                SELECT b.*, 
+                       r.name AS restaurant_name, 
+                       r.image AS restaurant_image, 
+                       COALESCE(AVG(rev.rating), r.rating) AS restaurant_rating
+                FROM bookings b 
+                JOIN restaurants r ON b.restaurant_id = r.id 
+                LEFT JOIN reviews rev ON r.id = rev.restaurant_id AND (rev.is_hidden = 0 OR rev.is_hidden IS NULL)
+                WHERE b.customer_id = ? 
+                GROUP BY b.id, r.id, r.name, r.image, r.rating
+                ORDER BY b.booking_date DESC, b.start_time DESC
+            `, [currentUser.id]);
+            myBookings = bookings;
+        } catch (e) {
+            myBookings = [];
+        }
+
+        const activeTab = req.query.tab === 'favorites' ? 'favorites-tab' :
+            (req.query.tab === 'reviews' ? 'reviews-tab' :
+                (req.query.tab === 'reservations' ? 'reservations-tab' :
+                    (req.query.tab === 'security' ? 'security-tab' : 'profile-tab')));
+
+        res.render('profile', {
+            currentUser,
+            myReviews,
+            favorites,
+            myBookings,
+            activeTab,
+            stats: { ratedCount: myReviews.length }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
@@ -1168,7 +1474,6 @@ app.post('/profile/update', upload.single('avatarFile'), async (req, res) => {
 
         await db.query('UPDATE users SET username = ?, avatar = ? WHERE email = ?', [req.body.username, avatarPath, userEmail]);
 
-        // NEW: the admin returns to the admin panel after saving the profile
         if (currentUser.role === 'admin') return res.redirect('/admin');
 
         res.redirect('/profile');
@@ -1191,7 +1496,6 @@ app.post('/profile/avatar/delete', async (req, res) => {
         if (users[0].role === 'owner') {
             return res.redirect('/owner-dashboard');
         }
-        // NEW: the admin returns to the admin panel after deleting the avatar
         if (users[0].role === 'admin') {
             return res.redirect('/admin');
         }
@@ -1217,7 +1521,6 @@ app.post('/profile/security', async (req, res) => {
     }
 });
 
-// NEW: notifications page (opened from the Notifications button in the header)
 async function renderNotificationsPage(req, res, requiredRole) {
     try {
         const userEmail = req.cookies.user_email;
@@ -1235,10 +1538,8 @@ async function renderNotificationsPage(req, res, requiredRole) {
     }
 }
 
-// NEW: restaurant owner notifications (hidden / deleted restaurants)
 app.get('/owner-notifications', (req, res) => renderNotificationsPage(req, res, 'owner'));
 
-// NEW: customer notifications (hidden / deleted reviews)
 app.get('/customer-notifications', (req, res) => renderNotificationsPage(req, res, 'customer'));
 
 app.listen(PORT, () => {
