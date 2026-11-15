@@ -59,7 +59,7 @@
                                     <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
                                         class="btn-primary"
                                         style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
-                                        onclick="return confirm('Вы действительно хотите удалить фото профиля?');">
+                                        onclick="return confirm('Are you sure you want to delete your profile photo?');">
                                         Delete Avatar
                                     </button>
                                 </div>
@@ -103,9 +103,12 @@
                                             <span style="color: #f39c12;">⭐ <%= rev.rating %>/5</span>
                                         </div>
                                         <p>"<%= rev.comment %>"</p>
+                                        <% if (rev.is_hidden) { %>
+                                            <p style="color: #ffa502; font-weight: bold; font-size: 0.85rem; margin: 4px 0;">[Hidden by administrator] This review is not visible to other users.</p>
+                                            <% } %>
                                         <div class="review-actions">
                                             <button type="button" class="btn-secondary"
-                                                style="font-size: 0.8rem; padding: 4px 10px;">Edit</button>
+                                                <%- rev.is_hidden ? 'disabled title="Hidden by administrator" ' : '' %>style="font-size: 0.8rem; padding: 4px 10px;">Edit</button>
                                             <button type="button" class="btn-secondary"
                                                 style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
                                         </div>

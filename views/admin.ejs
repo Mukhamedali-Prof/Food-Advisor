@@ -7,9 +7,13 @@
             <div class="profile-layout">
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-box">
-                        <div class="profile-avatar-letter" style="background-color: #3742fa; color: white;">
-                            <%= currentUser.email ? currentUser.email.charAt(0).toUpperCase() : 'A' %>
-                        </div>
+                        <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                            <img src="<%= currentUser.avatar %>" alt="Avatar" class="profile-avatar-large">
+                            <% } else { %>
+                                <div class="profile-avatar-letter" style="background-color: #3742fa; color: white;">
+                                    <%= currentUser.email ? currentUser.email.charAt(0).toUpperCase() : 'A' %>
+                                </div>
+                                <% } %>
                         <h3 style="margin: 5px 0 0 0; color: #000;">
                             <%= currentUser.username %>
                         </h3>
@@ -19,7 +23,9 @@
                     </div>
 
                     <nav class="profile-nav">
-                        <button type="button" class="profile-nav-btn active" onclick="showTab('users-tab', this)">Manage
+                        <button type="button" class="profile-nav-btn active"
+                            onclick="showTab('profile-tab', this)">Profile Info</button>
+                        <button type="button" class="profile-nav-btn" onclick="showTab('users-tab', this)">Manage
                             Users (<%= users.length %>)</button>
                         <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">Manage
                             Restaurants (<%= restaurants.length %>)</button>
@@ -31,7 +37,38 @@
                 </aside>
 
                 <main class="profile-content">
-                    <div id="users-tab" class="tab-pane active">
+                    <!-- Profile Info Tab -->
+                    <div id="profile-tab" class="tab-pane active">
+                        <h3>My Profile Details</h3>
+
+                        <form action="/profile/update" method="POST" enctype="multipart/form-data"
+                            style="margin-top: 20px;">
+                            <div class="form-group">
+                                <label>Display Name:</label>
+                                <input type="text" name="username" value="<%= currentUser.username %>" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Upload New Avatar from Device:</label>
+                                <input type="file" name="avatarFile" accept="image/*"
+                                    style="padding: 8px 0; border: none; background: transparent;">
+                                <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
+                                    PNG, WEBP</small>
+                            </div>
+                            <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
+                                        class="btn-primary"
+                                        style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
+                                        onclick="return confirm('Are you sure you want to delete your profile photo?');">
+                                        Delete Avatar
+                                    </button>
+                                </div>
+                                <% } %>
+                                    <button type="submit" class="btn-primary">Save Profile Changes</button>
+                        </form>
+                    </div>
+
+                    <div id="users-tab" class="tab-pane">
                         <h3>User Accounts Management</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Block user access or completely
                             delete accounts.</p>
@@ -79,6 +116,7 @@
                                 <% } %>
                     </div>
 
+                    <!-- Restaurants Tab -->
                     <div id="restaurants-tab" class="tab-pane">
                         <h3>Restaurants Management</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Hide venues from public search
@@ -87,29 +125,36 @@
                         <% if (restaurants && restaurants.length> 0) { %>
                             <div class="reviews-list">
                                 <% restaurants.forEach(r=> { %>
-                                    <div class="review-item"
-                                        style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <strong>⭐ <%= r.name %></strong> (<%= r.cuisine %>)<br>
-                                                <span style="font-size: 0.85rem; color: #666;">
-                                                    <%= r.address %> | Rating: <%= r.rating %>
-                                                            <% if (r.is_hidden) { %>
-                                                                <span
-                                                                    style="color: #ffa502; margin-left: 8px;">[HIDDEN]</span>
-                                                                <% } %>
-                                                </span>
+                                    <div class="review-item">
+                                        <div style="margin-bottom: 8px;">
+                                            <strong style="font-size: 1.05rem;">⭐ <%= r.name %></strong>
+                                            <% if (r.is_hidden) { %>
+                                                <span style="color: #ffa502; font-size: 0.8rem; margin-left: 8px;">[HIDDEN]</span>
+                                                <% } %>
                                         </div>
-                                        <div style="display: flex; gap: 8px;">
+                                        <p style="margin: 4px 0;"><strong>Cuisine:</strong>
+                                            <%= r.cuisine %>
+                                        </p>
+                                        <p style="margin: 4px 0;"><strong>Rating:</strong>
+                                            <%= r.rating != null ? '⭐ ' + r.rating + ' / 5.0' : 'No rating yet' %>
+                                        </p>
+                                        <p style="margin: 4px 0;"><strong>Address:</strong>
+                                            <%= r.address %>
+                                        </p>
+                                        <p style="margin: 4px 0;"><strong>Description:</strong>
+                                            <%= r.description ? r.description : 'No description provided.' %>
+                                        </p>
+                                        <div class="review-actions" style="margin-top: 12px; display: flex; gap: 8px;">
                                             <form action="/admin/restaurants/toggle/<%= r.id %>" method="POST">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px;">
-                                                    <%= r.is_hidden ? 'Show' : 'Hide' %>
+                                                    style="font-size: 0.8rem; padding: 4px 10px; color: <%= r.is_hidden ? '#2ed573' : '#ffa502' %>; border-color: <%= r.is_hidden ? '#2ed573' : '#ffa502' %>;">
+                                                    <%= r.is_hidden ? 'Show restaurant' : 'Hide restaurant' %>
                                                 </button>
                                             </form>
                                             <form action="/admin/restaurants/delete/<%= r.id %>" method="POST"
                                                 onsubmit="return confirm('Permanently delete this restaurant?');">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
+                                                    style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete restaurant</button>
                                             </form>
                                         </div>
                                     </div>
@@ -120,6 +165,7 @@
                                 <% } %>
                     </div>
 
+                    <!-- Reviews Tab -->
                     <div id="reviews-tab" class="tab-pane">
                         <h3>Review Moderation</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Hide inappropriate feedback or
@@ -130,27 +176,34 @@
                                 <% reviews.forEach(rev=> { %>
                                     <div class="review-item">
                                         <div class="review-header">
-                                            <strong>
-                                                <%= rev.restaurant_name %>
-                                            </strong> (by <%= rev.username %>)
-                                                <span style="color: #f39c12;">⭐ <%= rev.rating %>/5</span>
+                                            <span>
+                                                <strong style="font-size: 1.05rem;"><%= rev.restaurant_name %></strong>
                                                 <% if (rev.is_hidden) { %>
-                                                    <span
-                                                        style="color: #ffa502; font-size: 0.8rem; margin-left: 8px;">[HIDDEN]</span>
+                                                    <span style="color: #ffa502; font-size: 0.8rem; margin-left: 8px;">[HIDDEN]</span>
                                                     <% } %>
+                                            </span>
+                                            <span style="color: #f39c12;">⭐ <%= rev.rating %>/5</span>
                                         </div>
-                                        <p>"<%= rev.comment %>"</p>
-                                        <div class="review-actions" style="margin-top: 8px; display: flex; gap: 8px;">
+                                        <p style="margin: 4px 0;"><strong>Author:</strong>
+                                            <%= rev.username %>
+                                        </p>
+                                        <p style="margin: 4px 0;"><strong>Date:</strong>
+                                            <%= rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-GB') : 'Unknown' %>
+                                        </p>
+                                        <p style="margin: 4px 0;"><strong>Comment:</strong>
+                                            "<%= rev.comment %>"
+                                        </p>
+                                        <div class="review-actions" style="margin-top: 12px; display: flex; gap: 8px;">
                                             <form action="/admin/reviews/toggle/<%= rev.id %>" method="POST">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px;">
-                                                    <%= rev.is_hidden ? 'Show' : 'Hide' %>
+                                                    style="font-size: 0.8rem; padding: 4px 10px; color: <%= rev.is_hidden ? '#2ed573' : '#ffa502' %>; border-color: <%= rev.is_hidden ? '#2ed573' : '#ffa502' %>;">
+                                                    <%= rev.is_hidden ? 'Show review' : 'Hide review' %>
                                                 </button>
                                             </form>
                                             <form action="/admin/reviews/delete/<%= rev.id %>" method="POST"
                                                 onsubmit="return confirm('Permanently delete this review?');">
                                                 <button type="submit" class="btn-secondary"
-                                                    style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
+                                                    style="font-size: 0.8rem; padding: 4px 10px; color: #ff4757; border-color: #ff4757;">Delete review</button>
                                             </form>
                                         </div>
                                     </div>

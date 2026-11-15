@@ -38,6 +38,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// NEW (checklist: session security): blocked users and deleted accounts instantly lose their session
+app.use(async (req, res, next) => {
+    const email = req.cookies && req.cookies.user_email;
+    if (!email) return next();
+    try {
+        const [rows] = await db.query('SELECT is_blocked FROM users WHERE email = ?', [email]);
+        if (rows.length === 0 || rows[0].is_blocked) {
+            res.clearCookie('user_email');
+            delete req.cookies.user_email;
+        }
+    } catch (err) {
+        console.error('Session check failed:', err);
+    }
+    next();
+});
+
 function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => ({
         '&': '&amp;',
@@ -107,6 +123,110 @@ function isValidBookingTime(value) {
     return true;
 }
 
+// NEW: saves a notification for a user (never breaks the main action if it fails)
+async function addNotification(userId, type, message) {
+    try {
+        await db.query('INSERT INTO notifications (user_id, type, message) VALUES (?, ?, ?)', [userId, type, message]);
+    } catch (err) {
+        console.error('Failed to save notification:', err);
+    }
+}
+
+// NEW (checklist: cascade logic): runs a query and ignores it only if the table does not exist
+async function safeQuery(sql, params) {
+    try {
+        await db.query(sql, params);
+    } catch (err) {
+        if (err.code !== 'ER_NO_SUCH_TABLE') throw err;
+    }
+}
+
+// NEW (checklist: review deletion updates the restaurant rating)
+// Hidden reviews are not counted. A restaurant without visible reviews gets rating 0.
+async function recalcRestaurantRating(restaurantId) {
+    await db.query(`
+        UPDATE restaurants SET rating = COALESCE((
+            SELECT ROUND(AVG(rating), 1) FROM reviews
+            WHERE restaurant_id = ? AND (is_hidden = 0 OR is_hidden IS NULL)
+        ), 0) WHERE id = ?
+    `, [restaurantId, restaurantId]);
+}
+
+// NEW (checklist: cascade logic): deletes a restaurant with its menu, reviews, favorites and bookings
+async function deleteRestaurantCascade(restaurantId) {
+    await safeQuery('DELETE FROM reviews WHERE restaurant_id = ?', [restaurantId]);
+    await safeQuery('DELETE FROM favorites WHERE restaurant_id = ?', [restaurantId]);
+    await safeQuery('DELETE FROM bookings WHERE restaurant_id = ?', [restaurantId]);
+    await safeQuery('DELETE FROM menu_items WHERE restaurant_id = ?', [restaurantId]);
+    await db.query('DELETE FROM restaurants WHERE id = ?', [restaurantId]);
+}
+
+// NEW (checklist: cascade logic): deletes a user with reviews, favorites, bookings and notifications.
+// If the user owns restaurants, they are deleted with everything linked to them.
+async function deleteUserCascade(userId) {
+    const [owned] = await db.query('SELECT id FROM restaurants WHERE owner_id = ?', [userId]);
+    for (const restaurant of owned) {
+        await deleteRestaurantCascade(restaurant.id);
+    }
+
+    const [rated] = await db.query('SELECT DISTINCT restaurant_id FROM reviews WHERE user_id = ?', [userId]);
+
+    await safeQuery('DELETE FROM reviews WHERE user_id = ?', [userId]);
+    await safeQuery('DELETE FROM favorites WHERE user_id = ?', [userId]);
+    await safeQuery('DELETE FROM bookings WHERE customer_id = ?', [userId]);
+    await safeQuery('DELETE FROM notifications WHERE user_id = ?', [userId]);
+    await db.query('DELETE FROM users WHERE id = ?', [userId]);
+
+    for (const row of rated) {
+        await recalcRestaurantRating(row.restaurant_id);
+    }
+}
+
+// NEW: collects the notifications of a user
+// - "hidden" notices are built from the current is_hidden state, so they disappear as soon as the item is shown again
+// - "deleted" notices are read from the notifications table
+async function getNotificationsForUser(user) {
+    const items = [];
+
+    try {
+        const [hiddenRestaurants] = await db.query(
+            'SELECT name FROM restaurants WHERE owner_id = ? AND is_hidden = 1',
+            [user.id]
+        );
+        hiddenRestaurants.forEach((r) => items.push({
+            type: 'restaurant_hidden',
+            message: `Your restaurant "${r.name}" has been hidden from the service for violating the service rules.`,
+            date: null
+        }));
+
+        const [hiddenReviews] = await db.query(`
+            SELECT restaurants.name AS restaurant_name
+            FROM reviews
+            JOIN restaurants ON reviews.restaurant_id = restaurants.id
+            WHERE reviews.user_id = ? AND reviews.is_hidden = 1
+        `, [user.id]);
+        hiddenReviews.forEach((r) => items.push({
+            type: 'review_hidden',
+            message: `Your review of "${r.restaurant_name}" has been hidden for violating the service rules.`,
+            date: null
+        }));
+    } catch (err) {
+        console.error('Failed to load hidden-item notifications:', err);
+    }
+
+    try {
+        const [saved] = await db.query(
+            'SELECT type, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC',
+            [user.id]
+        );
+        saved.forEach((n) => items.push({ type: n.type, message: n.message, date: n.created_at }));
+    } catch (err) {
+        console.error('Failed to load saved notifications:', err);
+    }
+
+    return items;
+}
+
 app.get('/', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -123,12 +243,16 @@ app.get('/', async (req, res) => {
                 (SELECT COUNT(*) FROM users) as usersCount,
                 (SELECT COUNT(*) FROM reviews) as reviewsCount
         `);
-        const [topRestaurants] = await db.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 3');
+        // NEW: hidden restaurants are not shown to visitors
+        const [topRestaurants] = await db.query('SELECT * FROM restaurants WHERE (is_hidden = 0 OR is_hidden IS NULL) ORDER BY rating DESC LIMIT 3');
+        // NEW: hidden reviews, and reviews of hidden restaurants, are not shown to visitors
         const [recentReviews] = await db.query(`
             SELECT reviews.*, users.username, restaurants.name as restaurant_name 
             FROM reviews 
             JOIN users ON reviews.user_id = users.id 
             JOIN restaurants ON reviews.restaurant_id = restaurants.id 
+            WHERE (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL)
+              AND (restaurants.is_hidden = 0 OR restaurants.is_hidden IS NULL)
             ORDER BY reviews.id DESC LIMIT 3
         `);
 
@@ -313,10 +437,16 @@ app.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ? AND password = ?', [email, password]);
-        if (users.length > 0) {
+        // NEW (checklist 1): administrators cannot log in through the client form,
+        // they get the same error as a wrong password. Admin login is only available at /admin.
+        if (users.length > 0 && users[0].role !== 'admin') {
+            // NEW: blocked users cannot log in
+            if (users[0].is_blocked) {
+                return res.redirect('/?modal=login&error=' + encodeURIComponent('Your account has been blocked'));
+            }
+
             res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
             if (users[0].role === 'owner') return res.redirect('/owner-dashboard');
-            if (users[0].role === 'admin') return res.redirect('/admin');
             return res.redirect('/profile');
         } else {
             res.redirect('/?modal=login&error=' + encodeURIComponent('Invalid email or password!'));
@@ -455,11 +585,14 @@ app.post('/owner/restaurants/delete/:id', async (req, res) => {
             return res.status(400).send('Invalid restaurant ID.');
         }
 
-        const [result] = await db.query(
-            'DELETE FROM restaurants WHERE id = ? AND owner_id = ?',
+        // NEW (cascade logic): make sure the restaurant belongs to this owner, then delete it with all linked data
+        const [mine] = await db.query(
+            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
             [restaurantId, users[0].id]
         );
-        if (result.affectedRows === 0) return res.status(404).send('Restaurant not found or not owned by this account.');
+        if (mine.length === 0) return res.status(404).send('Restaurant not found or not owned by this account.');
+
+        await deleteRestaurantCascade(restaurantId);
 
         return res.redirect('/owner-dashboard');
     } catch (err) {
@@ -801,6 +934,11 @@ app.post('/admin', async (req, res) => {
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', [email, password]);
         if (users.length > 0) {
+            // NEW: blocked admin accounts cannot log in
+            if (users[0].is_blocked) {
+                return res.render('admin-login', { error: 'Your account has been blocked.', currentUser: null });
+            }
+
             res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
             res.redirect('/admin');
         } else {
@@ -818,7 +956,13 @@ app.post('/admin/users/delete/:id', async (req, res) => {
         if (!userEmail) return res.redirect('/admin');
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0 || adminCheck[0].id == req.params.id) return res.redirect('/admin');
-        await db.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+
+        const userId = Number(req.params.id);
+        if (!Number.isSafeInteger(userId) || userId <= 0) return res.redirect('/admin');
+
+        // NEW (cascade logic): removes the user's reviews, favorites, bookings, notifications
+        // and, for an owner, their restaurants with everything linked to them
+        await deleteUserCascade(userId);
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
@@ -866,7 +1010,25 @@ app.post('/admin/restaurants/delete/:id', async (req, res) => {
         const userEmail = req.cookies.user_email;
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
-        await db.query('DELETE FROM restaurants WHERE id = ?', [req.params.id]);
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) return res.redirect('/admin');
+
+        // NEW: remember who owned the restaurant before it is deleted
+        const [target] = await db.query('SELECT name, owner_id FROM restaurants WHERE id = ?', [restaurantId]);
+
+        // NEW (cascade logic): removes the menu, reviews, favorites and bookings of the restaurant
+        await deleteRestaurantCascade(restaurantId);
+
+        // NEW: tell the owner that the restaurant was deleted
+        if (target.length > 0 && target[0].owner_id) {
+            await addNotification(
+                target[0].owner_id,
+                'restaurant_deleted',
+                `Your restaurant "${target[0].name}" was deleted by an administrator for violating the service rules.`
+            );
+        }
+
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
@@ -896,7 +1058,29 @@ app.post('/admin/reviews/delete/:id', async (req, res) => {
         const userEmail = req.cookies.user_email;
         const [adminCheck] = await db.query('SELECT * FROM users WHERE email = ? AND role = "admin"', [userEmail]);
         if (adminCheck.length === 0) return res.redirect('/');
+
+        // NEW: remember the author and the restaurant before the review is deleted
+        const [target] = await db.query(`
+            SELECT reviews.user_id, reviews.restaurant_id, restaurants.name AS restaurant_name
+            FROM reviews
+            JOIN restaurants ON reviews.restaurant_id = restaurants.id
+            WHERE reviews.id = ?
+        `, [req.params.id]);
+
         await db.query('DELETE FROM reviews WHERE id = ?', [req.params.id]);
+
+        if (target.length > 0) {
+            // NEW (checklist 5): update the overall rating of the restaurant after the review is deleted
+            await recalcRestaurantRating(target[0].restaurant_id);
+
+            // NEW: tell the author that the review was deleted
+            await addNotification(
+                target[0].user_id,
+                'review_deleted',
+                `Your review of "${target[0].restaurant_name}" was deleted by an administrator for violating the service rules.`
+            );
+        }
+
         res.redirect('/admin');
     } catch (err) {
         console.error(err);
@@ -928,10 +1112,12 @@ app.get('/profile', async (req, res) => {
 
         let favorites = [];
         try {
+            // NEW: hidden restaurants are not shown in the favorites of a customer
             const [favs] = await db.query(`
                 SELECT restaurants.* FROM favorites 
                 JOIN restaurants ON favorites.restaurant_id = restaurants.id 
                 WHERE favorites.user_id = ?
+                  AND (restaurants.is_hidden = 0 OR restaurants.is_hidden IS NULL)
             `, [currentUser.id]);
             favorites = favs;
         } catch (e) {
@@ -958,6 +1144,10 @@ app.post('/profile/update', upload.single('avatarFile'), async (req, res) => {
         if (req.file) avatarPath = '/uploads/' + req.file.filename;
 
         await db.query('UPDATE users SET username = ?, avatar = ? WHERE email = ?', [req.body.username, avatarPath, userEmail]);
+
+        // NEW: the admin returns to the admin panel after saving the profile
+        if (currentUser.role === 'admin') return res.redirect('/admin');
+
         res.redirect('/profile');
     } catch (err) {
         console.error(err);
@@ -977,6 +1167,10 @@ app.post('/profile/avatar/delete', async (req, res) => {
 
         if (users[0].role === 'owner') {
             return res.redirect('/owner-dashboard');
+        }
+        // NEW: the admin returns to the admin panel after deleting the avatar
+        if (users[0].role === 'admin') {
+            return res.redirect('/admin');
         }
         return res.redirect('/profile');
     } catch (err) {
@@ -999,6 +1193,30 @@ app.post('/profile/security', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+// NEW: notifications page (opened from the Notifications button in the header)
+async function renderNotificationsPage(req, res, requiredRole) {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== requiredRole) return res.redirect('/');
+        const currentUser = users[0];
+
+        const notifications = await getNotificationsForUser(currentUser);
+        return res.render('notifications', { currentUser, notifications });
+    } catch (err) {
+        console.error('Failed to load notifications page:', err);
+        return res.status(500).send('Server error');
+    }
+}
+
+// NEW: restaurant owner notifications (hidden / deleted restaurants)
+app.get('/owner-notifications', (req, res) => renderNotificationsPage(req, res, 'owner'));
+
+// NEW: customer notifications (hidden / deleted reviews)
+app.get('/customer-notifications', (req, res) => renderNotificationsPage(req, res, 'customer'));
 
 app.listen(PORT, () => {
     console.log(`Server is running at: http://localhost:${PORT}`);

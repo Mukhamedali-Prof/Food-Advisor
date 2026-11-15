@@ -69,7 +69,7 @@
                                     <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
                                         class="btn-primary"
                                         style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
-                                        onclick="return confirm('Вы действительно хотите удалить фото профиля?');">
+                                        onclick="return confirm('Are you sure you want to delete your profile photo?');">
                                         Delete Avatar
                                     </button>
                                 </div>
@@ -84,8 +84,13 @@
                         <% if (myRestaurants && myRestaurants.length> 0) { %>
                             <div class="favorites-grid">
                                 <% myRestaurants.forEach(r=> { %>
-                                    <div class="favorite-item managed-restaurant-card">
+                                    <div class="favorite-item managed-restaurant-card"
+                                         style="<%= r.is_hidden ? 'opacity: 0.7; filter: grayscale(1);' : '' %>">
                                         <h4 title="<%= r.name %>">🍽️ <%= r.name %></h4>
+                                        <% if (r.is_hidden) { %>
+                                            <p style="margin: 4px 0; font-weight: bold;">Hidden by admin</p>
+                                            <p style="margin: 0 0 8px 0; font-size: 0.85rem; font-weight: bold;">This restaurant is hidden from the public. Only an administrator can make it visible again.</p>
+                                            <% } %>
                                         <div class="managed-restaurant-details">
                                             <p class="restaurant-card-field">
                                                 <strong>Cuisine:</strong><span class="restaurant-card-value" title="<%= r.cuisine %>"><%= r.cuisine %></span>
@@ -151,7 +156,7 @@
                                         alt="Selected restaurant image preview">
                                     <button type="button"
                                         style="background-color: #ffc800; color: #000; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;"
-                                        onclick="document.getElementById('fileInput').click();">📸 Выбрать фото</button>
+                                        onclick="document.getElementById('fileInput').click();">📸 Choose photo</button>
                                     <p id="restaurantImageHint" class="restaurant-upload-hint">Image preview will appear here.</p>
                                 </div>
                             </div>

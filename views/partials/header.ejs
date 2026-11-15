@@ -24,13 +24,12 @@
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
                 <% if (currentUser.role==='owner' ) { %>
                     <a href="/owner-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
-                    <% } else if (currentUser.role==='admin' ) { %>
-                        <a href="/admin-notifications" class="nav-badge-link" title="System Alerts">Notifications</a>
-                        <% } else if (currentUser.role==='customer' ) { %>
-                            <a href="/my-reviews">My Reviews</a>
-                            <a href="/favorites" title="My Favorites">Favorites</a>
+                    <% } else if (currentUser.role==='customer' ) { %>
+                        <a href="/my-reviews">My Reviews</a>
+                        <a href="/favorites" title="My Favorites">Favorites</a>
+                        <a href="/customer-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
+                        <% } %>
                             <% } %>
-                                <% } %>
         </nav>
 
         <div class="auth-links">

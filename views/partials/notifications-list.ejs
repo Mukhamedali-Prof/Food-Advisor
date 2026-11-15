@@ -1,0 +1,28 @@
+<%
+    const notificationTitles = {
+        restaurant_hidden: 'Restaurant hidden',
+        restaurant_deleted: 'Restaurant deleted',
+        review_hidden: 'Review hidden',
+        review_deleted: 'Review deleted'
+    };
+    const notificationList = (typeof notifications !== 'undefined' && notifications) ? notifications : [];
+%>
+<p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Messages from the administration about content that violated the service rules.</p>
+
+<% if (notificationList.length > 0) { %>
+    <div class="reviews-list">
+        <% notificationList.forEach(n => { %>
+            <div class="review-item" style="border-left: 5px solid #ff4757;">
+                <div class="review-header">
+                    <strong><%= notificationTitles[n.type] || 'Notification' %></strong>
+                    <span style="font-size: 0.8rem; color: #747d8c;">
+                        <%= n.date ? new Date(n.date).toLocaleDateString('en-GB') : '' %>
+                    </span>
+                </div>
+                <p style="margin: 4px 0;"><%= n.message %></p>
+            </div>
+        <% }) %>
+    </div>
+<% } else { %>
+    <p>You have no notifications.</p>
+<% } %>
