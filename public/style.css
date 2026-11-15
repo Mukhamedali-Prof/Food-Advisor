@@ -1357,3 +1357,13 @@ body.dark-theme .restaurant-description-section {
     border: 1px solid #ddd;
     border-radius: 8px;
 }
+
+select.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #dcdde1;
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: #fff;
+    cursor: pointer;
+}

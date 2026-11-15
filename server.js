@@ -603,6 +603,14 @@ app.get('/owner-dashboard', async (req, res) => {
         res.status(500).send('Server error on owner dashboard');
     }
 });
+
+const ALLOWED_CUISINES = [
+    'Italian', 'Japanese', 'Chinese', 'Mexican', 'American',
+    'French', 'Indian', 'Thai', 'Korean', 'Turkish',
+    'Georgian', 'Mediterranean', 'Spanish', 'Greek', 'Vietnamese',
+    'Middle Eastern', 'Brazilian', 'Seafood', 'Steakhouse', 'Fast Food'
+];
+
 app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -628,6 +636,16 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
                 400
             );
         }
+
+        if (!ALLOWED_CUISINES.includes(restaurant.cuisine)) {
+            return sendRestaurantError(
+                res,
+                'Invalid cuisine selected',
+                new Error('Please choose a valid cuisine from the list.'),
+                400
+            );
+        }
+
         if (restaurant.name.length > 150 || restaurant.cuisine.length > 100 || restaurant.address.length > 255) {
             return sendRestaurantError(
                 res,
@@ -636,6 +654,7 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
                 400
             );
         }
+
         if (restaurant.description.length > 2000) {
             return sendRestaurantError(
                 res,
@@ -645,9 +664,7 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             );
         }
 
-        const imagePath = req.file
-            ? '/uploads/' + req.file.filename
-            : (typeof image === 'string' && image.trim() ? image.trim() : '/images/No%20image.png');
+        const imagePath = req.file ? '/uploads/' + req.file.filename : (typeof image === 'string' && image.trim() ? image.trim() : '/images/No%20image.png');
 
         await db.query(
             'INSERT INTO restaurants (name, cuisine, address, description, image, owner_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0)',

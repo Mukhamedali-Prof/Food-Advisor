@@ -84,25 +84,52 @@
             <div class="section-block">
                 <h3>Recent Customer Reviews</h3>
                 <% if (recentReviews && recentReviews.length> 0) { %>
-                    <div class="reviews-list">
+                    <div class="reviews-list" style="display: flex; flex-direction: column; gap: 12px;">
                         <% recentReviews.forEach(rev=> { %>
-                            <div class="review-card">
-                                <div class="review-meta">
-                                    <strong>
-                                        <%= rev.username %>
-                                    </strong> on <em>
-                                        <%= rev.restaurant_name %>
-                                    </em>
-                                    <span class="review-rating">⭐ <%= rev.rating %> / 5</span>
+                            <div class="review-card"
+                                style="padding: 14px 16px; border: 1px solid #e1e4e8; border-radius: 8px; background: #fff;">
+                                <div class="review-meta"
+                                    style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+                                    <div>
+                                        <strong style="color: #2f3640;">
+                                            <%= rev.username %>
+                                        </strong>
+                                        <span style="color: #718093; font-size: 0.9rem;"> reviewed </span>
+                                        <% if (rev.restaurant_id) { %>
+                                            <a href="/restaurant/<%= rev.restaurant_id %>"
+                                                style="font-weight: 600; color: #e67e22; text-decoration: none;">
+                                                <%= rev.restaurant_name %>
+                                            </a>
+                                            <% } else { %>
+                                                <strong style="color: #2f3640;">
+                                                    <%= rev.restaurant_name %>
+                                                </strong>
+                                                <% } %>
+
+                                                    <% if (rev.created_at) { %>
+                                                        <div
+                                                            style="font-size: 0.8rem; color: #8c98a4; margin-top: 2px;">
+                                                            <%= new Date(rev.created_at).toLocaleDateString('en-US', {
+                                                                month: 'short' , day: 'numeric' , year: 'numeric' }) %>
+                                                        </div>
+                                                        <% } %>
+                                    </div>
+
+                                    <span class="review-rating"
+                                        style="white-space: nowrap; font-size: 0.85rem; font-weight: bold; background: #fff8e1; padding: 3px 8px; border-radius: 6px; border: 1px solid #ffe082;">
+                                        ⭐ <%= Number(rev.rating).toFixed(1) %> / 5.0
+                                    </span>
                                 </div>
-                                <p class="review-comment">
-                                    <%= rev.comment %>
+
+                                <p class="review-comment"
+                                    style="margin: 0; color: #353b48; line-height: 1.45; font-size: 0.95rem;">
+                                    “<%= rev.comment %>”
                                 </p>
                             </div>
                             <% }) %>
                     </div>
                     <% } else { %>
-                        <p>No reviews yet.</p>
+                        <p style="color: #718093;">No reviews yet. Be the first to share your experience!</p>
                         <% } %>
             </div>
 
