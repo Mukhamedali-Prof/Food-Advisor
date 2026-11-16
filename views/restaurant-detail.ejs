@@ -55,14 +55,12 @@
 
             <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
-            <!-- ЕДИНСТВЕННЫЙ БЛОК БРОНИРОВАНИЯ С ВАЛИДАЦИЕЙ -->
             <div class="section-block">
                 <h3>Table Reservation</h3>
                 <% if (currentUser && currentUser.role==='customer' ) { %>
                     <form action="/restaurant/<%= restaurant.id %>/book" method="POST" class="booking-form"
                         onsubmit="return validateNewBooking(event)">
 
-                        <!-- Блок для вывода ошибки прямо в форме -->
                         <div id="new-booking-error"
                             style="display: none; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 8px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 10px;">
                         </div>
