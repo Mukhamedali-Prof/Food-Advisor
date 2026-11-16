@@ -299,28 +299,63 @@ app.get('/search', async (req, res) => {
     try {
         const rawQuery = typeof req.query.query === 'string' ? req.query.query.trim() : '';
         const selectedCuisine = typeof req.query.cuisine === 'string' ? req.query.cuisine.trim() : '';
-        const conditions = ['(is_hidden = 0 OR is_hidden IS NULL)'];
+        const selectedLocation = typeof req.query.location === 'string' ? req.query.location.trim() : '';
+        const selectedMinRating = typeof req.query.min_rating === 'string' ? req.query.min_rating.trim() : '';
+        const selectedMinPrice = typeof req.query.min_price === 'string' ? req.query.min_price.trim() : '';
+        const selectedMaxPrice = typeof req.query.max_price === 'string' ? req.query.max_price.trim() : '';
+
+        const conditions = ['(r.is_hidden = 0 OR r.is_hidden IS NULL)'];
         const params = [];
 
         if (rawQuery) {
-            conditions.push('(name LIKE ? OR cuisine LIKE ? OR address LIKE ?)');
+            conditions.push('(r.name LIKE ? OR r.cuisine LIKE ? OR r.address LIKE ?)');
             const term = `%${rawQuery}%`;
             params.push(term, term, term);
         }
+
         if (selectedCuisine) {
-            conditions.push('cuisine = ?');
+            conditions.push('r.cuisine = ?');
             params.push(selectedCuisine);
         }
 
-        const [restaurants] = await db.query(
-            `SELECT * FROM restaurants WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC, id DESC`,
-            params
-        );
+        if (selectedLocation) {
+            conditions.push('r.address LIKE ?');
+            params.push(`${selectedLocation},%`);
+        }
+
+        if (selectedMinRating) {
+            conditions.push('r.rating >= ?');
+            params.push(parseFloat(selectedMinRating));
+        }
+
+        const havingConditions = [];
+        if (selectedMinPrice !== '') {
+            havingConditions.push('avg_price >= ?');
+            params.push(parseFloat(selectedMinPrice));
+        }
+        if (selectedMaxPrice !== '') {
+            havingConditions.push('avg_price <= ?');
+            params.push(parseFloat(selectedMaxPrice));
+        }
+
+        let query = `
+            SELECT r.*, AVG(m.price) AS avg_price
+            FROM restaurants r
+            LEFT JOIN menu_items m ON r.id = m.restaurant_id
+            WHERE ${conditions.join(' AND ')}
+            GROUP BY r.id
+        `;
+
+        if (havingConditions.length > 0) {
+            query += ` HAVING ${havingConditions.join(' AND ')}`;
+        }
+
+        query += ` ORDER BY r.created_at DESC, r.id DESC`;
+
+        const [restaurants] = await db.query(query, params);
+
         const [cuisines] = await db.query(`
-            SELECT DISTINCT cuisine
-            FROM restaurants
-            WHERE is_hidden = 0 OR is_hidden IS NULL
-            ORDER BY cuisine ASC
+            SELECT DISTINCT cuisine FROM restaurants WHERE is_hidden = 0 OR is_hidden IS NULL ORDER BY cuisine ASC
         `);
 
         let currentUser = null;
@@ -337,6 +372,10 @@ app.get('/search', async (req, res) => {
             cuisines,
             searchQuery: rawQuery,
             selectedCuisine,
+            selectedLocation,
+            selectedMinRating,
+            selectedMinPrice,
+            selectedMaxPrice,
             currentUser
         });
     } catch (err) {
@@ -611,6 +650,14 @@ const ALLOWED_CUISINES = [
     'Middle Eastern', 'Brazilian', 'Seafood', 'Steakhouse', 'Fast Food'
 ];
 
+const ALLOWED_STREETS = [
+    'Aethelgard Avenue', 'Borealis Boulevard', 'Caelum Lane', 'Duskwood Crescent',
+    'Eldoria Way', 'Faelivor Square', 'Glimmerfen Drive', 'Havencrest Alley',
+    'Illoria Passage', 'Jovian Terrace', 'Kinsale Walk', 'LUNARIS Parkway',
+    'Mirthwood Row', 'Nebula Circle', 'Oakhaven Loop', 'Pendragon Close',
+    'Quicksilver Strand', 'Raventhorpe Thoroughfare', 'Stardust Gate', 'Zephyrion Boulevard'
+];
+
 app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -618,26 +665,26 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
 
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
         if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
+
         const currentUser = users[0];
+        const { name, cuisine, street, building_number, description, image } = req.body || {};
 
-        const { name, cuisine, address, description, image } = req.body || {};
-        const restaurant = {
-            name: typeof name === 'string' ? name.trim() : '',
-            cuisine: typeof cuisine === 'string' ? cuisine.trim() : '',
-            address: typeof address === 'string' ? address.trim() : '',
-            description: typeof description === 'string' ? description.trim() : ''
-        };
+        const restaurantName = typeof name === 'string' ? name.trim() : '';
+        const restaurantCuisine = typeof cuisine === 'string' ? cuisine.trim() : '';
+        const restaurantStreet = typeof street === 'string' ? street.trim() : '';
+        const buildingNo = parseInt(building_number, 10);
+        const restaurantDescription = typeof description === 'string' ? description.trim() : '';
 
-        if (!restaurant.name || !restaurant.cuisine || !restaurant.address || !restaurant.description) {
+        if (!restaurantName || !restaurantCuisine || !restaurantStreet || isNaN(buildingNo) || !restaurantDescription) {
             return sendRestaurantError(
                 res,
                 'Restaurant details are incomplete',
-                new Error('Name, cuisine, address, and description are required.'),
+                new Error('Name, cuisine, street, building number, and description are required.'),
                 400
             );
         }
 
-        if (!ALLOWED_CUISINES.includes(restaurant.cuisine)) {
+        if (!ALLOWED_CUISINES.includes(restaurantCuisine)) {
             return sendRestaurantError(
                 res,
                 'Invalid cuisine selected',
@@ -646,7 +693,27 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             );
         }
 
-        if (restaurant.name.length > 150 || restaurant.cuisine.length > 100 || restaurant.address.length > 255) {
+        if (!ALLOWED_STREETS.includes(restaurantStreet)) {
+            return sendRestaurantError(
+                res,
+                'Invalid street selected',
+                new Error('Please choose a valid European street from the list.'),
+                400
+            );
+        }
+
+        if (buildingNo < 1 || buildingNo > 99) {
+            return sendRestaurantError(
+                res,
+                'Invalid building number',
+                new Error('Building number must be between 1 and 99.'),
+                400
+            );
+        }
+
+        const fullAddress = `${restaurantStreet}, ${buildingNo}`;
+
+        if (restaurantName.length > 150 || restaurantCuisine.length > 100 || fullAddress.length > 255) {
             return sendRestaurantError(
                 res,
                 'Restaurant details are too long',
@@ -655,7 +722,7 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             );
         }
 
-        if (restaurant.description.length > 2000) {
+        if (restaurantDescription.length > 2000) {
             return sendRestaurantError(
                 res,
                 'Restaurant description is too long',
@@ -668,41 +735,13 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
 
         await db.query(
             'INSERT INTO restaurants (name, cuisine, address, description, image, owner_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0)',
-            [restaurant.name, restaurant.cuisine, restaurant.address, restaurant.description, imagePath, currentUser.id]
+            [restaurantName, restaurantCuisine, fullAddress, restaurantDescription, imagePath, currentUser.id]
         );
 
         return res.redirect('/owner-dashboard');
     } catch (err) {
         console.error('Failed to add restaurant:', err);
         return sendRestaurantError(res, 'Failed to add restaurant', err);
-    }
-});
-
-app.post('/owner/restaurants/delete/:id', async (req, res) => {
-    try {
-        const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/?modal=login');
-
-        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
-
-        const restaurantId = Number(req.params.id);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
-            return res.status(400).send('Invalid restaurant ID.');
-        }
-
-        const [mine] = await db.query(
-            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
-            [restaurantId, users[0].id]
-        );
-        if (mine.length === 0) return res.status(404).send('Restaurant not found or not owned by this account.');
-
-        await deleteRestaurantCascade(restaurantId);
-
-        return res.redirect('/owner-dashboard');
-    } catch (err) {
-        console.error('Failed to delete restaurant:', err);
-        return sendRestaurantError(res, 'Failed to delete restaurant', err);
     }
 });
 

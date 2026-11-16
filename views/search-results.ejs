@@ -17,17 +17,60 @@
                             <label>Cuisine / Style</label>
                             <select name="cuisine">
                                 <option value="">All Cuisines</option>
-                                <% if (typeof cuisines !=='undefined' ) { %>
-                                    <% cuisines.forEach(c=> { %>
-                                        <option value="<%= c.cuisine %>" <%=selectedCuisine===c.cuisine ? 'selected'
-                                            : '' %>><%= c.cuisine %>
+                                <% const allCuisines=[ 'Italian' , 'Japanese' , 'Mexican' , 'Chinese' , 'Indian'
+                                    , 'American' , 'French' , 'Thai' , 'Greek' , 'Spanish' , 'Japanese/Sushi'
+                                    , 'Fast Food' , 'Bakery & Cafe' , 'Seafood' , 'Steakhouse' , 'Vegetarian / Vegan'
+                                    , 'BBQ & Grill' , 'Georgian' , 'Uzbek' , 'Middle Eastern' ]; %>
+                                    <% allCuisines.forEach(c=> { %>
+                                        <option value="<%= c %>" <%=selectedCuisine===c ? 'selected' : '' %>><%= c %>
                                         </option>
                                         <% }) %>
-                                            <% } %>
                             </select>
                         </div>
 
-                        <button type="submit" class="btn-primary" style="width: 100%;">Apply Filters</button>
+                        <div class="form-group">
+                            <label>Location (Street)</label>
+                            <select name="location">
+                                <option value="">All Locations</option>
+                                <% const fakeEuropeanStreets=[ 'Aethelgard Avenue' , 'Borealis Boulevard'
+                                    , 'Caelum Lane' , 'Duskwood Crescent' , 'Eldoria Way' , 'Faelivor Square'
+                                    , 'Glimmerfen Drive' , 'Havencrest Alley' , 'Illoria Passage' , 'Jovian Terrace'
+                                    , 'Kinsale Walk' , 'LUNARIS Parkway' , 'Mirthwood Row' , 'Nebula Circle'
+                                    , 'Oakhaven Loop' , 'Pendragon Close' , 'Quicksilver Strand'
+                                    , 'Raventhorpe Thoroughfare' , 'Stardust Gate' , 'Zephyrion Boulevard' ]; %>
+                                    <% fakeEuropeanStreets.forEach(street=> { %>
+                                        <option value="<%= street %>" <%=(typeof selectedLocation !=='undefined' &&
+                                            selectedLocation===street) ? 'selected' : '' %>><%= street %>
+                                        </option>
+                                        <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Minimum Rating</label>
+                            <select name="min_rating">
+                                <option value="">Any Rating</option>
+                                <option value="4.0" <%=(typeof selectedMinRating !=='undefined' &&
+                                    selectedMinRating==='4.0' ) ? 'selected' : '' %>>⭐ 4.0 & above</option>
+                                <option value="4.5" <%=(typeof selectedMinRating !=='undefined' &&
+                                    selectedMinRating==='4.5' ) ? 'selected' : '' %>>⭐ 4.5 & above</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Avg. Dish Price ($)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" name="min_price"
+                                    value="<%= typeof selectedMinPrice !== 'undefined' ? selectedMinPrice : '' %>"
+                                    placeholder="Min" min="0" step="1" class="form-control" style="width: 50%;">
+                                <input type="number" name="max_price"
+                                    value="<%= typeof selectedMaxPrice !== 'undefined' ? selectedMaxPrice : '' %>"
+                                    placeholder="Max" min="0" step="1" class="form-control" style="width: 50%;">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Apply
+                            Filters</button>
                     </form>
                 </aside>
 
@@ -39,7 +82,6 @@
                                     onclick="window.location.href='/restaurant/<%= r.id %>'"
                                     style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; cursor: pointer;">
 
-                                    <!-- Рейтинг в правом верхнем углу -->
                                     <div
                                         style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
                                         ⭐ <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ?

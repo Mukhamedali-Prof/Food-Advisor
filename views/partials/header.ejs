@@ -22,14 +22,11 @@
         <nav class="nav-links">
             <a href="/search">All Restaurants</a>
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
-                <% if (currentUser.role==='owner' ) { %>
-                    <a href="/owner-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
-                    <% } else if (currentUser.role==='customer' ) { %>
-                        <a href="/profile?tab=reviews">My Reviews</a>
-                        <a href="/profile?tab=favorites" title="My Favorites">Favorites</a>
-                        <a href="/customer-notifications" class="nav-badge-link" title="Notifications">Notifications</a>
+                <% if (currentUser.role==='customer' ) { %>
+                    <a href="/profile?tab=reviews">My Reviews</a>
+                    <a href="/profile?tab=favorites" title="My Favorites">Favorites</a>
+                    <% } %>
                         <% } %>
-                            <% } %>
         </nav>
 
         <div class="auth-links">
