@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -32,6 +33,46 @@ const db = require('./config/db');
 
 const app = express();
 const PORT = 3000;
+
+const isAuthenticated = (req, res, next) => {
+    if (req.cookies && req.cookies.user_email) {
+        return next(); // Пользователь есть — идем дальше
+    }
+    return res.redirect('/?modal=login&error=' + encodeURIComponent('Please log in first.'));
+};
+
+const requireRole = (requiredRole) => {
+    return async (req, res, next) => {
+        try {
+            if (!req.cookies || !req.cookies.user_email) {
+                return res.redirect('/?modal=login');
+            }
+
+            const [users] = await db.query('SELECT role, is_blocked FROM users WHERE email = ?', [req.cookies.user_email]);
+
+            if (users.length === 0) {
+                res.clearCookie('user_email');
+                return res.redirect('/?modal=login');
+            }
+
+            const user = users[0];
+
+            if (user.is_blocked) {
+                res.clearCookie('user_email');
+                return res.redirect('/?modal=login&error=' + encodeURIComponent('Your account is blocked.'));
+            }
+
+            if (user.role === requiredRole) {
+                return next();
+            }
+
+            return res.status(403).send('Access denied. Insufficient permissions.');
+        } catch (err) {
+            console.error('Access control error:', err);
+            return res.status(500).send('Server error');
+        }
+    };
+};
 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
@@ -544,16 +585,35 @@ app.post('/restaurant/:id/book', async (req, res) => {
 app.get('/register', (req, res) => res.redirect('/'));
 
 app.post('/register', async (req, res) => {
-    const { username, email, password, role } = req.body;
     try {
-        const assignedRole = (role === 'owner') ? 'owner' : 'customer';
-        await db.query('INSERT INTO users (username, email, password, role, avatar) VALUES (?, ?, ?, ?, NULL)',
-            [username, email, password, assignedRole]);
-        res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
-        res.redirect('/');
+        const { username, email, password, role } = req.body;
+
+        if (!username || !email || !password) {
+            return res.status(400).send('All fields are required.');
+        }
+
+        const saltRounds = 10;
+
+        bcrypt.hash(password, saltRounds, async (err, hashedPassword) => {
+            if (err) {
+                console.error('Error hashing password:', err);
+                return res.status(500).send('Server error during registration');
+            }
+
+            const allowedRoles = ['customer', 'owner'];
+            const userRole = allowedRoles.includes(role) ? role : 'customer';
+
+            await db.query(
+                'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+                [username, email, hashedPassword, userRole]
+            );
+
+            return res.redirect('/?modal=login');
+        });
+
     } catch (err) {
-        console.error(err);
-        res.redirect('/?modal=register&error=' + encodeURIComponent('User exists or error occurred!'));
+        console.error('Registration failed:', err);
+        return res.status(500).send('Server error');
     }
 });
 
@@ -562,31 +622,36 @@ app.get('/login', (req, res) => res.redirect('/'));
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
-        const [users] = await db.query('SELECT * FROM users WHERE email = ? AND password = ?', [email, password]);
-        if (users.length > 0 && users[0].role !== 'admin') {
-            if (users[0].is_blocked) {
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+
+        if (users.length > 0) {
+            const user = users[0];
+
+            if (user.is_blocked) {
                 return res.redirect('/?modal=login&error=' + encodeURIComponent('Your account has been blocked'));
             }
 
-            res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
-            if (users[0].role === 'owner') return res.redirect('/owner-dashboard');
-            return res.redirect('/profile');
-        } else {
-            res.redirect('/?modal=login&error=' + encodeURIComponent('Invalid email or password!'));
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+
+            if (isPasswordValid) {
+                res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
+
+                if (user.role === 'owner') return res.redirect('/owner-dashboard');
+                return res.redirect('/profile');
+            }
         }
+
+        res.redirect('/?modal=login&error=' + encodeURIComponent('Invalid email or password!'));
+
     } catch (err) {
-        console.error(err);
+        console.error('Login error:', err);
         res.redirect('/?modal=login&error=' + encodeURIComponent('Server error during login'));
     }
 });
 
-app.get('/owner-dashboard', async (req, res) => {
+app.get('/owner-dashboard', requireRole('owner'), async (req, res) => {
     try {
-        const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/?modal=login');
-
-        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [req.cookies.user_email]);
         const currentUser = users[0];
 
         let myRestaurants = [];
@@ -604,14 +669,12 @@ app.get('/owner-dashboard', async (req, res) => {
 
         const [bookings] = await db.query(`
             SELECT b.id, b.restaurant_id, b.customer_id, 
-                DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, 
-                TIME_FORMAT(b.start_time, '%H:%i') AS start_time, 
-                TIME_FORMAT(b.end_time, '%H:%i') AS end_time, 
-                b.guest_count, b.status, b.owner_read_at, 
-                r.name AS restaurant_name, 
-                u.username AS customer_name, 
-                u.email AS customer_email, 
-                u.avatar AS customer_avatar
+                   DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, 
+                   TIME_FORMAT(b.start_time, '%H:%i') AS start_time, 
+                   TIME_FORMAT(b.end_time, '%H:%i') AS end_time, 
+                   b.guest_count, b.status, b.owner_read_at, 
+                   r.name AS restaurant_name, 
+                   u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar 
             FROM bookings b 
             JOIN restaurants r ON r.id = b.restaurant_id 
             JOIN users u ON u.id = b.customer_id 
@@ -638,7 +701,7 @@ app.get('/owner-dashboard', async (req, res) => {
         });
 
     } catch (err) {
-        console.error(err);
+        console.error('Server error on owner dashboard:', err);
         res.status(500).send('Server error on owner dashboard');
     }
 });
@@ -1471,22 +1534,20 @@ app.post('/profile/bookings/delete/:id', async (req, res) => {
     }
 });
 
-app.get('/profile', async (req, res) => {
+app.get('/profile', isAuthenticated, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/?modal=login');
 
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0) return res.redirect('/');
+        if (users.length === 0) {
+            res.clearCookie('user_email');
+            return res.redirect('/?modal=login');
+        }
         const currentUser = users[0];
 
-        const [bookings] = await db.query(`
-            SELECT * FROM bookings 
-            WHERE customer_id = ? 
-            ORDER BY booking_date DESC
-        `, [currentUser.id]);
-
-        if (currentUser.role === 'owner') return res.redirect('/owner-dashboard');
+        if (currentUser.role === 'owner') {
+            return res.redirect('/owner-dashboard');
+        }
 
         const [myReviews] = await db.query(`
             SELECT reviews.*, restaurants.name as restaurant_name 
@@ -1511,19 +1572,17 @@ app.get('/profile', async (req, res) => {
 
         let myBookings = [];
         try {
-            const [bookings] = await db.query(`
-                SELECT b.*, 
-                       r.name AS restaurant_name, 
-                       r.image AS restaurant_image, 
-                       COALESCE(AVG(rev.rating), r.rating) AS restaurant_rating
+            const [bookingsResult] = await db.query(`
+                SELECT b.*, r.name AS restaurant_name, r.image AS restaurant_image, 
+                       COALESCE(AVG(rev.rating), r.rating) AS restaurant_rating 
                 FROM bookings b 
                 JOIN restaurants r ON b.restaurant_id = r.id 
-                LEFT JOIN reviews rev ON r.id = rev.restaurant_id AND (rev.is_hidden = 0 OR rev.is_hidden IS NULL)
+                LEFT JOIN reviews rev ON r.id = rev.restaurant_id AND (rev.is_hidden = 0 OR rev.is_hidden IS NULL) 
                 WHERE b.customer_id = ? 
-                GROUP BY b.id, r.id, r.name, r.image, r.rating
+                GROUP BY b.id, r.id, r.name, r.image, r.rating 
                 ORDER BY b.booking_date DESC, b.start_time DESC
             `, [currentUser.id]);
-            myBookings = bookings;
+            myBookings = bookingsResult;
         } catch (e) {
             myBookings = [];
         }
@@ -1541,8 +1600,9 @@ app.get('/profile', async (req, res) => {
             activeTab,
             stats: { ratedCount: myReviews.length }
         });
+
     } catch (err) {
-        console.error(err);
+        console.error('Profile route error:', err);
         res.status(500).send('Server error');
     }
 });
