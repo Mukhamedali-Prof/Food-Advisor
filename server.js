@@ -1045,6 +1045,37 @@ app.post('/owner/bookings/:id/status', async (req, res) => {
     }
 });
 
+app.post('/owner/restaurants/delete/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(400).send('Invalid restaurant ID.');
+        }
+
+        const [mine] = await db.query(
+            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, users[0].id]
+        );
+
+        if (mine.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by this account.');
+        }
+
+        await deleteRestaurantCascade(restaurantId);
+
+        return res.redirect('/owner-dashboard');
+    } catch (err) {
+        console.error('Failed to delete restaurant:', err);
+        return sendRestaurantError(res, 'Failed to delete restaurant', err);
+    }
+});
+
 app.post('/owner/bookings/:id/delete', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
