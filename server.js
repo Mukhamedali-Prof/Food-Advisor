@@ -34,9 +34,41 @@ const db = require('./config/db');
 const app = express();
 const PORT = 3000;
 
+function validateTextField(value, { label, required = false, min = 0, max = 500 }) {
+    if (typeof value !== 'string') {
+        return { ok: false, error: `${label} must be a valid string.` };
+    }
+
+    const cleaned = value.trim();
+
+    if (required && cleaned.length === 0) {
+        return { ok: false, error: `${label} is required.` };
+    }
+
+    if (cleaned.length > 0 && cleaned.length < min) {
+        return { ok: false, error: `${label} must be at least ${min} characters long.` };
+    }
+
+    if (cleaned.length > max) {
+        return { ok: false, error: `${label} must be at most ${max} characters long.` };
+    }
+
+    if (cleaned.length > 0) {
+        if (/^\d/.test(cleaned)) {
+            return { ok: false, error: `${label} cannot start with a digit.` };
+        }
+
+        if (!/\p{L}/u.test(cleaned)) {
+            return { ok: false, error: `${label} cannot contain only digits and symbols.` };
+        }
+    }
+
+    return { ok: true, value: cleaned };
+}
+
 const isAuthenticated = (req, res, next) => {
     if (req.cookies && req.cookies.user_email) {
-        return next(); // Пользователь есть — идем дальше
+        return next();
     }
     return res.redirect('/?modal=login&error=' + encodeURIComponent('Please log in first.'));
 };
@@ -668,24 +700,24 @@ app.get('/owner-dashboard', requireRole('owner'), async (req, res) => {
         }
 
         const [bookings] = await db.query(`
-            SELECT b.id, b.restaurant_id, b.customer_id, 
-                   DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, 
-                   TIME_FORMAT(b.start_time, '%H:%i') AS start_time, 
-                   TIME_FORMAT(b.end_time, '%H:%i') AS end_time, 
-                   b.guest_count, b.status, b.owner_read_at, 
-                   r.name AS restaurant_name, 
-                   u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar 
-            FROM bookings b 
-            JOIN restaurants r ON r.id = b.restaurant_id 
-            JOIN users u ON u.id = b.customer_id 
-            WHERE r.owner_id = ? 
+            SELECT b.id, b.restaurant_id, b.customer_id,
+                   DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+                   TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
+                   TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
+                   b.guest_count, b.status, b.owner_read_at,
+                   r.name AS restaurant_name,
+                   u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar
+            FROM bookings b
+            JOIN restaurants r ON r.id = b.restaurant_id
+            JOIN users u ON u.id = b.customer_id
+            WHERE r.owner_id = ?
             ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
         `, [currentUser.id]);
 
         const [unreadRows] = await db.query(`
-            SELECT COUNT(*) AS unread_count 
-            FROM bookings b 
-            JOIN restaurants r ON r.id = b.restaurant_id 
+            SELECT COUNT(*) AS unread_count
+            FROM bookings b
+            JOIN restaurants r ON r.id = b.restaurant_id
             WHERE r.owner_id = ? AND b.status = 'pending'
         `, [currentUser.id]);
 
@@ -697,9 +729,10 @@ app.get('/owner-dashboard', requireRole('owner'), async (req, res) => {
             bookings,
             unreadBookingCount: Number(unreadRows[0].unread_count),
             activeTab,
-            stats: { restaurantsCount: myRestaurants.length }
+            stats: { restaurantsCount: myRestaurants.length },
+            errorMessage: null,
+            addFormData: null
         });
-
     } catch (err) {
         console.error('Server error on owner dashboard:', err);
         res.status(500).send('Server error on owner dashboard');
@@ -728,83 +761,312 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
 
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
         if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
-
         const currentUser = users[0];
-        const { name, cuisine, street, building_number, description, image } = req.body || {};
 
-        const restaurantName = typeof name === 'string' ? name.trim() : '';
+        const { cuisine, street, building_number, image } = req.body || {};
+
+        const renderAddError = async (message) => {
+            let myRestaurants = [];
+            try {
+                const [rests] = await db.query('SELECT * FROM restaurants WHERE owner_id = ?', [currentUser.id]);
+                myRestaurants = rests;
+            } catch (e) {
+                try {
+                    const [rests] = await db.query('SELECT * FROM restaurants WHERE user_id = ?', [currentUser.id]);
+                    myRestaurants = rests;
+                } catch (err2) {
+                    myRestaurants = [];
+                }
+            }
+
+            const [bookings] = await db.query(`
+                SELECT b.id, b.restaurant_id, b.customer_id,
+                       DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+                       TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
+                       TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
+                       b.guest_count, b.status, b.owner_read_at,
+                       r.name AS restaurant_name,
+                       u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar
+                FROM bookings b
+                JOIN restaurants r ON r.id = b.restaurant_id
+                JOIN users u ON u.id = b.customer_id
+                WHERE r.owner_id = ?
+                ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
+            `, [currentUser.id]);
+
+            const [unreadRows] = await db.query(`
+                SELECT COUNT(*) AS unread_count
+                FROM bookings b
+                JOIN restaurants r ON r.id = b.restaurant_id
+                WHERE r.owner_id = ? AND b.status = 'pending'
+            `, [currentUser.id]);
+
+            return res.status(400).render('owner-profile', {
+                currentUser,
+                myRestaurants,
+                bookings,
+                unreadBookingCount: Number(unreadRows[0].unread_count),
+                activeTab: 'add-restaurant-tab',
+                stats: { restaurantsCount: myRestaurants.length },
+                errorMessage: message,
+                addFormData: {
+                    name: typeof req.body?.name === 'string' ? req.body.name : '',
+                    cuisine: typeof cuisine === 'string' ? cuisine : '',
+                    street: typeof street === 'string' ? street : '',
+                    building_number: typeof building_number === 'string' ? building_number : '',
+                    description: typeof req.body?.description === 'string' ? req.body.description : '',
+                    image: typeof image === 'string' ? image : ''
+                }
+            });
+        };
+
+        const nameCheck = validateTextField(req.body?.name, {
+            label: 'Restaurant name',
+            required: true,
+            min: 2,
+            max: 100
+        });
+        if (!nameCheck.ok) {
+            return renderAddError(nameCheck.error);
+        }
+
+        const descCheck = validateTextField(req.body?.description, {
+            label: 'Restaurant description',
+            required: true,
+            min: 10,
+            max: 1000
+        });
+        if (!descCheck.ok) {
+            return renderAddError(descCheck.error);
+        }
+
         const restaurantCuisine = typeof cuisine === 'string' ? cuisine.trim() : '';
         const restaurantStreet = typeof street === 'string' ? street.trim() : '';
         const buildingNo = parseInt(building_number, 10);
-        const restaurantDescription = typeof description === 'string' ? description.trim() : '';
 
-        if (!restaurantName || !restaurantCuisine || !restaurantStreet || isNaN(buildingNo) || !restaurantDescription) {
-            return sendRestaurantError(
-                res,
-                'Restaurant details are incomplete',
-                new Error('Name, cuisine, street, building number, and description are required.'),
-                400
-            );
+        if (!restaurantCuisine || !restaurantStreet || isNaN(buildingNo)) {
+            return renderAddError('Cuisine, street, and building number are required.');
         }
 
         if (!ALLOWED_CUISINES.includes(restaurantCuisine)) {
-            return sendRestaurantError(
-                res,
-                'Invalid cuisine selected',
-                new Error('Please choose a valid cuisine from the list.'),
-                400
-            );
+            return renderAddError('Please choose a valid cuisine from the list.');
         }
 
         if (!ALLOWED_STREETS.includes(restaurantStreet)) {
-            return sendRestaurantError(
-                res,
-                'Invalid street selected',
-                new Error('Please choose a valid European street from the list.'),
-                400
-            );
+            return renderAddError('Please choose a valid European street from the list.');
         }
 
         if (buildingNo < 1 || buildingNo > 99) {
-            return sendRestaurantError(
-                res,
-                'Invalid building number',
-                new Error('Building number must be between 1 and 99.'),
-                400
-            );
+            return renderAddError('Building number must be between 1 and 99.');
         }
 
         const fullAddress = `${restaurantStreet}, ${buildingNo}`;
-
-        if (restaurantName.length > 150 || restaurantCuisine.length > 100 || fullAddress.length > 255) {
-            return sendRestaurantError(
-                res,
-                'Restaurant details are too long',
-                new Error('Name must be at most 150 characters, cuisine 100, and address 255.'),
-                400
-            );
+        if (restaurantCuisine.length > 100 || fullAddress.length > 255) {
+            return renderAddError('Cuisine must be at most 100 characters and address at most 255.');
         }
 
-        if (restaurantDescription.length > 2000) {
-            return sendRestaurantError(
-                res,
-                'Restaurant description is too long',
-                new Error('Description must be at most 2000 characters.'),
-                400
-            );
-        }
-
-        const imagePath = req.file ? '/uploads/' + req.file.filename : (typeof image === 'string' && image.trim() ? image.trim() : '/images/No%20image.png');
+        const imagePath = req.file
+            ? '/uploads/' + req.file.filename
+            : (typeof image === 'string' && image.trim() ? image.trim() : '/images/No%20image.png');
 
         await db.query(
             'INSERT INTO restaurants (name, cuisine, address, description, image, owner_id, rating) VALUES (?, ?, ?, ?, ?, ?, 0)',
-            [restaurantName, restaurantCuisine, fullAddress, restaurantDescription, imagePath, currentUser.id]
+            [nameCheck.value, restaurantCuisine, fullAddress, descCheck.value, imagePath, currentUser.id]
         );
 
         return res.redirect('/owner-dashboard');
     } catch (err) {
         console.error('Failed to add restaurant:', err);
         return sendRestaurantError(res, 'Failed to add restaurant', err);
+    }
+});
+
+app.get('/owner/restaurants/:id/edit', async (req, res) => {
+    try {
+        const owner = await getOwnerFromRequest(req);
+        if (!owner) return res.redirect('/?modal=login');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        const [restaurants] = await db.query(
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, owner.id]
+        );
+        if (restaurants.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by you.');
+        }
+
+        return res.render('owner-edit-restaurant', {
+            currentUser: owner,
+            restaurant: restaurants[0],
+            errorMessage: null
+        });
+    } catch (err) {
+        console.error('Failed to load edit restaurant page:', err);
+        return res.status(500).send('Server error');
+    }
+});
+
+app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req, res) => {
+    try {
+        const owner = await getOwnerFromRequest(req);
+        if (!owner) return res.redirect('/?modal=login');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        const [restaurants] = await db.query(
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, owner.id]
+        );
+        if (restaurants.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by you.');
+        }
+
+        const currentRestaurant = restaurants[0];
+        const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
+        const rawDescription = typeof req.body?.description === 'string' ? req.body.description : '';
+        const rawCuisine = typeof req.body?.cuisine === 'string' ? req.body.cuisine.trim() : '';
+        const rawStreet = typeof req.body?.street === 'string' ? req.body.street.trim() : '';
+        const rawBuilding = req.body?.building_number;
+        const parsedBuilding = Number(rawBuilding);
+
+        const renderEditError = (message) => {
+            const draftAddress = (rawStreet && Number.isInteger(parsedBuilding) && parsedBuilding >= 1 && parsedBuilding <= 99)
+                ? `${rawStreet}, ${parsedBuilding}`
+                : currentRestaurant.address;
+
+            return res.status(400).render('owner-edit-restaurant', {
+                currentUser: owner,
+                restaurant: {
+                    ...currentRestaurant,
+                    name: rawName,
+                    cuisine: rawCuisine,
+                    street: rawStreet,
+                    building_number: Number.isFinite(parsedBuilding) ? parsedBuilding : '',
+                    address: draftAddress,
+                    description: rawDescription
+                },
+                errorMessage: message
+            });
+        };
+
+        const nameCheck = validateTextField(rawName, {
+            label: 'Restaurant name',
+            required: true,
+            min: 2,
+            max: 100
+        });
+        if (!nameCheck.ok) {
+            return renderEditError(nameCheck.error);
+        }
+
+        const descCheck = validateTextField(rawDescription, {
+            label: 'Restaurant description',
+            required: true,
+            min: 10,
+            max: 1000
+        });
+        if (!descCheck.ok) {
+            return renderEditError(descCheck.error);
+        }
+
+        const matchedCuisine = typeof ALLOWED_CUISINES !== 'undefined'
+            ? ALLOWED_CUISINES.find((c) => c.toLowerCase() === rawCuisine.toLowerCase())
+            : rawCuisine;
+        if (!rawCuisine || !matchedCuisine) {
+            return renderEditError('Please select a valid cuisine type.');
+        }
+
+        const matchedStreet = typeof ALLOWED_STREETS !== 'undefined'
+            ? ALLOWED_STREETS.find((s) => s.toLowerCase() === rawStreet.toLowerCase())
+            : rawStreet;
+        if (!rawStreet || !matchedStreet) {
+            return renderEditError('Please select a valid street name.');
+        }
+
+        if (!Number.isInteger(parsedBuilding) || parsedBuilding < 1 || parsedBuilding > 99) {
+            return renderEditError('Building number must be between 1 and 99.');
+        }
+
+        const updatedAddress = `${matchedStreet}, ${parsedBuilding}`;
+        const imagePath = req.file ? '/uploads/' + req.file.filename : currentRestaurant.image;
+
+        await db.query(
+            'UPDATE restaurants SET name = ?, cuisine = ?, address = ?, description = ?, image = ? WHERE id = ? AND owner_id = ?',
+            [nameCheck.value, matchedCuisine, updatedAddress, descCheck.value, imagePath, restaurantId, owner.id]
+        );
+
+        return res.redirect('/owner-dashboard');
+    } catch (err) {
+        console.error('Failed to update restaurant:', err);
+        return sendRestaurantError(res, 'Failed to update restaurant', err);
+    }
+});
+
+app.post('/owner/restaurants/delete/:id', async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/?modal=login');
+
+        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(400).send('Invalid restaurant ID.');
+        }
+
+        const [mine] = await db.query(
+            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, users[0].id]
+        );
+
+        if (mine.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by this account.');
+        }
+
+        await deleteRestaurantCascade(restaurantId);
+
+        return res.redirect('/owner-dashboard');
+    } catch (err) {
+        console.error('Failed to delete restaurant:', err);
+        return sendRestaurantError(res, 'Failed to delete restaurant', err);
+    }
+});
+
+app.post('/owner/restaurants/:id/delete-image', async (req, res) => {
+    try {
+        const owner = await getOwnerFromRequest(req);
+        if (!owner) return res.redirect('/?modal=login');
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        const [restaurants] = await db.query(
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
+            [restaurantId, owner.id]
+        );
+        if (restaurants.length === 0) {
+            return res.status(404).send('Restaurant not found or not owned by you.');
+        }
+
+        await db.query(
+            'UPDATE restaurants SET image = NULL WHERE id = ? AND owner_id = ?',
+            [restaurantId, owner.id]
+        );
+
+        return res.redirect(`/owner/restaurants/${restaurantId}/edit`);
+    } catch (err) {
+        console.error('Failed to remove restaurant image:', err);
+        return sendRestaurantError(res, 'Failed to remove restaurant image', err);
     }
 });
 
@@ -828,6 +1090,7 @@ app.get('/owner/restaurants/:id/menu', async (req, res) => {
             'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
             [restaurantId]
         );
+
         const messages = {
             added: 'Menu item added.',
             updated: 'Menu item updated.',
@@ -838,7 +1101,10 @@ app.get('/owner/restaurants/:id/menu', async (req, res) => {
             currentUser: owner,
             restaurant: restaurants[0],
             menuItems,
-            statusMessage: messages[req.query.status] || null
+            statusMessage: messages[req.query.status] || null,
+            errorMessage: null,
+            failedUpdateItem: null,
+            addMenuItemData: null
         });
     } catch (err) {
         console.error('Failed to load restaurant menu:', err);
@@ -855,33 +1121,62 @@ app.post('/owner/restaurants/:restaurantId/menu/add', async (req, res) => {
         if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
             return res.status(404).send('Restaurant not found.');
         }
+
         const [restaurants] = await db.query(
-            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
             [restaurantId, owner.id]
         );
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
 
-        const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-        const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
-        const priceText = typeof req.body.price === 'string' ? req.body.price.trim() : '';
-        if (!name || name.length > 150 || !/^\d+(?:\.\d{1,2})?$/.test(priceText) || description.length > 2000) {
-            return sendRestaurantError(
-                res,
-                'Invalid menu item',
-                new Error('Enter an item name (up to 150 characters), a valid non-negative price with up to two decimals, and a description up to 2000 characters.'),
-                400
+        const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
+        const rawDescription = typeof req.body?.description === 'string' ? req.body.description : '';
+        const rawPrice = typeof req.body?.price === 'string' ? req.body.price : '';
+
+        const renderMenuError = async (message) => {
+            const [menuItems] = await db.query(
+                'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
+                [restaurantId]
             );
+            return res.status(400).render('owner-menu', {
+                currentUser: owner,
+                restaurant: restaurants[0],
+                menuItems,
+                statusMessage: null,
+                errorMessage: message,
+                failedUpdateItem: null,
+                addMenuItemData: {
+                    name: rawName,
+                    description: rawDescription,
+                    price: rawPrice
+                }
+            });
+        };
+
+        const nameCheck = validateTextField(rawName, { label: 'Dish name', required: true, min: 2, max: 100 });
+        if (!nameCheck.ok) {
+            return renderMenuError(nameCheck.error);
+        }
+
+        const descCheck = validateTextField(rawDescription || '', { label: 'Dish description', required: false, min: 0, max: 500 });
+        if (!descCheck.ok) {
+            return renderMenuError(descCheck.error);
+        }
+
+        const priceText = rawPrice.trim();
+        if (!/^\d+(?:\.\d{1,2})?$/.test(priceText)) {
+            return renderMenuError('Enter a valid non-negative price with up to two decimals.');
         }
 
         const price = Number(priceText);
         if (!Number.isFinite(price) || price > 99999999.99) {
-            return sendRestaurantError(res, 'Invalid menu item', new Error('Price is outside the allowed range.'), 400);
+            return renderMenuError('Price is outside the allowed range.');
         }
 
         await db.query(
             'INSERT INTO menu_items (restaurant_id, name, description, price) VALUES (?, ?, ?, ?)',
-            [restaurantId, name, description || null, price]
+            [restaurantId, nameCheck.value, descCheck.value || null, price]
         );
+
         return res.redirect(`/owner/restaurants/${restaurantId}/menu?status=added`);
     } catch (err) {
         console.error('Failed to add menu item:', err);
@@ -896,26 +1191,68 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/update', async (req, res
 
         const restaurantId = Number(req.params.restaurantId);
         const itemId = Number(req.params.itemId);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0 ||
-            !Number.isSafeInteger(itemId) || itemId <= 0) {
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0 || !Number.isSafeInteger(itemId) || itemId <= 0) {
             return res.status(404).send('Restaurant or menu item not found.');
         }
+
         const [restaurants] = await db.query(
-            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
+            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
             [restaurantId, owner.id]
         );
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
 
-        const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-        const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
-        const priceText = typeof req.body.price === 'string' ? req.body.price.trim() : '';
-        if (!name || name.length > 150 || !/^\d+(?:\.\d{1,2})?$/.test(priceText) || description.length > 2000) {
-            return sendRestaurantError(res, 'Invalid menu item', new Error('Check the item name, price, and description.'), 400);
+        const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
+        const rawDescription = typeof req.body?.description === 'string' ? req.body.description : '';
+        const rawPrice = typeof req.body?.price === 'string' ? req.body.price : '';
+
+        const renderMenuError = async (message) => {
+            const [menuItems] = await db.query(
+                'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
+                [restaurantId]
+            );
+            return res.status(400).render('owner-menu', {
+                currentUser: owner,
+                restaurant: restaurants[0],
+                menuItems,
+                statusMessage: null,
+                errorMessage: message,
+                failedUpdateItem: {
+                    itemId,
+                    name: rawName,
+                    description: rawDescription,
+                    price: rawPrice
+                }
+            });
+        };
+
+        const nameCheck = validateTextField(rawName, {
+            label: 'Dish name',
+            required: true,
+            min: 2,
+            max: 100
+        });
+        if (!nameCheck.ok) {
+            return renderMenuError(nameCheck.error);
+        }
+
+        const descCheck = validateTextField(rawDescription || '', {
+            label: 'Dish description',
+            required: false,
+            min: 0,
+            max: 500
+        });
+        if (!descCheck.ok) {
+            return renderMenuError(descCheck.error);
+        }
+
+        const priceText = rawPrice.trim();
+        if (!/^\d+(?:\.\d{1,2})?$/.test(priceText)) {
+            return renderMenuError('Check the item price.');
         }
 
         const price = Number(priceText);
         if (!Number.isFinite(price) || price > 99999999.99) {
-            return sendRestaurantError(res, 'Invalid menu item', new Error('Price is outside the allowed range.'), 400);
+            return renderMenuError('Price is outside the allowed range.');
         }
 
         const [items] = await db.query(
@@ -926,83 +1263,13 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/update', async (req, res
 
         await db.query(
             'UPDATE menu_items SET name = ?, description = ?, price = ? WHERE id = ? AND restaurant_id = ?',
-            [name, description || null, price, itemId, restaurantId]
+            [nameCheck.value, descCheck.value || null, price, itemId, restaurantId]
         );
+
         return res.redirect(`/owner/restaurants/${restaurantId}/menu?status=updated`);
     } catch (err) {
         console.error('Failed to update menu item:', err);
         return sendRestaurantError(res, 'Failed to update menu item', err);
-    }
-});
-
-app.get('/owner/restaurants/:id/edit', async (req, res) => {
-    try {
-        const owner = await getOwnerFromRequest(req);
-        if (!owner) return res.redirect('/?modal=login');
-
-        const restaurantId = Number(req.params.id);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
-            return res.status(404).send('Restaurant not found.');
-        }
-
-        const [restaurants] = await db.query(
-            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
-            [restaurantId, owner.id]
-        );
-
-        if (restaurants.length === 0) {
-            return res.status(404).send('Restaurant not found or not owned by you.');
-        }
-
-        return res.render('owner-edit-restaurant', { currentUser: owner, restaurant: restaurants[0] });
-    } catch (err) {
-        console.error('Failed to load edit restaurant page:', err);
-        return res.status(500).send('Server error');
-    }
-});
-
-app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req, res) => {
-    try {
-        const owner = await getOwnerFromRequest(req);
-        if (!owner) return res.redirect('/?modal=login');
-
-        const restaurantId = Number(req.params.id);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
-            return res.status(404).send('Restaurant not found.');
-        }
-
-        const [restaurants] = await db.query(
-            'SELECT * FROM restaurants WHERE id = ? AND owner_id = ?',
-            [restaurantId, owner.id]
-        );
-
-        if (restaurants.length === 0) {
-            return res.status(404).send('Restaurant not found or not owned by you.');
-        }
-
-        const currentRestaurant = restaurants[0];
-        const { name, cuisine, address, description } = req.body || {};
-
-        const updatedName = typeof name === 'string' ? name.trim() : '';
-        const updatedCuisine = typeof cuisine === 'string' ? cuisine.trim() : '';
-        const updatedAddress = typeof address === 'string' ? address.trim() : '';
-        const updatedDescription = typeof description === 'string' ? description.trim() : '';
-
-        if (!updatedName || !updatedCuisine || !updatedAddress || !updatedDescription) {
-            return sendRestaurantError(res, 'Incomplete details', new Error('All fields are required.'), 400);
-        }
-
-        const imagePath = req.file ? '/uploads/' + req.file.filename : currentRestaurant.image;
-
-        await db.query(
-            'UPDATE restaurants SET name = ?, cuisine = ?, address = ?, description = ?, image = ? WHERE id = ? AND owner_id = ?',
-            [updatedName, updatedCuisine, updatedAddress, updatedDescription, imagePath, restaurantId, owner.id]
-        );
-
-        return res.redirect('/owner-dashboard');
-    } catch (err) {
-        console.error('Failed to update restaurant:', err);
-        return sendRestaurantError(res, 'Failed to update restaurant', err);
     }
 });
 
@@ -1013,20 +1280,22 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/delete', async (req, res
 
         const restaurantId = Number(req.params.restaurantId);
         const itemId = Number(req.params.itemId);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0 ||
-            !Number.isSafeInteger(itemId) || itemId <= 0) {
+        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0 || !Number.isSafeInteger(itemId) || itemId <= 0) {
             return res.status(404).send('Restaurant or menu item not found.');
         }
+
         const [restaurants] = await db.query(
             'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
             [restaurantId, owner.id]
         );
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
+
         const [result] = await db.query(
             'DELETE FROM menu_items WHERE id = ? AND restaurant_id = ?',
             [itemId, restaurantId]
         );
         if (result.affectedRows === 0) return res.status(404).send('Menu item not found.');
+
         return res.redirect(`/owner/restaurants/${restaurantId}/menu?status=deleted`);
     } catch (err) {
         console.error('Failed to delete menu item:', err);
@@ -1105,37 +1374,6 @@ app.post('/owner/bookings/:id/status', async (req, res) => {
     } catch (err) {
         console.error("Ошибка при обновлении статуса:", err);
         res.status(500).send('Server error: ' + err.message);
-    }
-});
-
-app.post('/owner/restaurants/delete/:id', async (req, res) => {
-    try {
-        const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/?modal=login');
-
-        const [users] = await db.query('SELECT id, role FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
-
-        const restaurantId = Number(req.params.id);
-        if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
-            return res.status(400).send('Invalid restaurant ID.');
-        }
-
-        const [mine] = await db.query(
-            'SELECT id FROM restaurants WHERE id = ? AND owner_id = ?',
-            [restaurantId, users[0].id]
-        );
-
-        if (mine.length === 0) {
-            return res.status(404).send('Restaurant not found or not owned by this account.');
-        }
-
-        await deleteRestaurantCascade(restaurantId);
-
-        return res.redirect('/owner-dashboard');
-    } catch (err) {
-        console.error('Failed to delete restaurant:', err);
-        return sendRestaurantError(res, 'Failed to delete restaurant', err);
     }
 });
 
@@ -1689,6 +1927,6 @@ app.get('/owner-notifications', (req, res) => renderNotificationsPage(req, res, 
 
 app.get('/customer-notifications', (req, res) => renderNotificationsPage(req, res, 'customer'));
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running at: http://localhost:${PORT}`);
 });

@@ -1,69 +1,107 @@
 <%- include('partials/header') %>
+    <div class="container" style="max-width: 1000px;">
+        <div class="dashboard-card-wrapper">
+            <div
+                style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <h2 style="margin: 0;">Manage Menu: <%= restaurant.name %>
+                </h2>
+                <a href="/owner-dashboard" class="btn-secondary" style="white-space: nowrap;">Back to Owner
+                    Dashboard</a>
+            </div>
 
-<div class="container" style="max-width: 1000px;">
-    <div class="dashboard-card-wrapper">
-        <a href="/owner-dashboard" class="btn-secondary">Back to Owner Dashboard</a>
-        <h2 style="margin-top: 20px;">Manage Menu: <%= restaurant.name %></h2>
+            <% if (statusMessage) { %>
+                <p role="status" style="padding: 12px; background: #e8f5e9; border-radius: 6px;">
+                    <%= statusMessage %>
+                </p>
+                <% } %>
 
-        <% if (statusMessage) { %>
-            <p role="status" style="padding: 12px; background: #e8f5e9; border-radius: 6px;">
-                <%= statusMessage %>
-            </p>
-        <% } %>
+                    <% const hasFailedUpdate=typeof failedUpdateItem !=='undefined' && failedUpdateItem !==null; %>
 
-        <section class="favorite-item" style="margin: 20px 0;">
-            <h3>Add Menu Item</h3>
-            <form action="/owner/restaurants/<%= restaurant.id %>/menu/add" method="POST">
-                <div class="form-group">
-                    <label>Item name:</label>
-                    <input type="text" name="name" maxlength="150" required>
-                </div>
-                <div class="form-group">
-                    <label>Description (optional):</label>
-                    <textarea name="description" maxlength="2000" rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Price:</label>
-                    <input type="number" name="price" min="0" max="99999999.99" step="0.01" required>
-                </div>
-                <button type="submit" class="btn-primary">Add Item</button>
-            </form>
-        </section>
-
-        <section>
-            <h3>Current Menu</h3>
-            <% if (menuItems.length > 0) { %>
-                <% menuItems.forEach(function(item) { %>
-                    <article class="favorite-item" style="margin: 14px 0;">
-                        <form action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/update" method="POST">
-                            <div class="form-group">
-                                <label>Item name:</label>
-                                <input type="text" name="name" value="<%= item.name %>" maxlength="150" required>
+                        <% if (errorMessage && !hasFailedUpdate) { %>
+                            <div class="form-error-banner" role="alert">
+                                <%= errorMessage %>
                             </div>
-                            <div class="form-group">
-                                <label>Description (optional):</label>
-                                <textarea name="description" maxlength="2000" rows="3"><%= item.description || '' %></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Price:</label>
-                                <input type="number" name="price" value="<%= Number(item.price).toFixed(2) %>"
-                                    min="0" max="99999999.99" step="0.01" required>
-                            </div>
-                            <button type="submit" class="btn-primary">Save Changes</button>
-                        </form>
-                        <form action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/delete" method="POST"
-                            style="margin-top: 8px;"
-                            onsubmit="return confirm('Delete this menu item?');">
-                            <button type="submit" class="btn-secondary"
-                                style="border-color: #c62828; color: #c62828;">Delete Item</button>
-                        </form>
-                    </article>
-                <% }) %>
-            <% } else { %>
-                <p>No menu items yet. Add the first item above.</p>
-            <% } %>
-        </section>
+                            <% } %>
+
+                                <% const addDraft=typeof addMenuItemData !=='undefined' && addMenuItemData !==null ?
+                                    addMenuItemData : null; %>
+
+                                    <section class="favorite-item" style="margin: 20px 0;">
+                                        <h3>Add Menu Item</h3>
+                                        <form action="/owner/restaurants/<%= restaurant.id %>/menu/add" method="POST">
+                                            <div class="form-group">
+                                                <label>Item name:</label>
+                                                <input type="text" name="name"
+                                                    value="<%= addDraft ? addDraft.name : '' %>" required minlength="2"
+                                                    maxlength="100" placeholder="Dish name">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Description (optional):</label>
+                                                <textarea name="description" maxlength="500"
+                                                    placeholder="Ingredients or short description (optional)"><%= addDraft ? addDraft.description : '' %></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Price:</label>
+                                                <input type="number" name="price"
+                                                    value="<%= addDraft ? addDraft.price : '' %>" min="0"
+                                                    max="99999999.99" step="0.01" required>
+                                            </div>
+                                            <button type="submit" class="btn-primary">Add Item</button>
+                                        </form>
+                                    </section>
+
+                                    <section>
+                                        <h3>Current Menu</h3>
+                                        <% if (menuItems && menuItems.length> 0) { %>
+                                            <% menuItems.forEach(function(item) { %>
+                                                <% const draft=(hasFailedUpdate &&
+                                                    Number(failedUpdateItem.itemId)===Number(item.id)) ?
+                                                    failedUpdateItem : null; %>
+                                                    <article class="favorite-item" style="margin: 14px 0;">
+                                                        <% if (draft && errorMessage) { %>
+                                                            <div class="form-error-banner" role="alert"
+                                                                style="margin-bottom: 10px;">
+                                                                <%= errorMessage %>
+                                                            </div>
+                                                            <% } %>
+                                                                <form
+                                                                    action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/update"
+                                                                    method="POST">
+                                                                    <div class="form-group">
+                                                                        <label>Item name:</label>
+                                                                        <input type="text" name="name"
+                                                                            value="<%= draft ? draft.name : item.name %>"
+                                                                            minlength="2" maxlength="100" required>
+                                                                    </div>
+                                                                    <div class="form-group">
+                                                                        <label>Description (optional):</label>
+                                                                        <textarea name="description" maxlength="500"
+                                                                            rows="3"><%= draft ? draft.description : (item.description || '') %></textarea>
+                                                                    </div>
+                                                                    <div class="form-group">
+                                                                        <label>Price:</label>
+                                                                        <input type="number" name="price"
+                                                                            value="<%= draft ? draft.price : Number(item.price).toFixed(2) %>"
+                                                                            min="0" max="99999999.99" step="0.01"
+                                                                            required>
+                                                                    </div>
+                                                                    <button type="submit" class="btn-primary">Save
+                                                                        Changes</button>
+                                                                </form>
+                                                                <form
+                                                                    action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/delete"
+                                                                    method="POST" style="margin-top: 8px;"
+                                                                    onsubmit="return confirm('Delete this menu item?');">
+                                                                    <button type="submit" class="btn-secondary"
+                                                                        style="border-color: #c62828; color: #c62828;">Delete
+                                                                        Item</button>
+                                                                </form>
+                                                    </article>
+                                                    <% }); %>
+                                                        <% } else { %>
+                                                            <p>No menu items yet. Add the first item above.</p>
+                                                            <% } %>
+                                    </section>
+        </div>
     </div>
-</div>
-
-<%- include('partials/footer') %>
+    <%- include('partials/footer') %>

@@ -1,10 +1,8 @@
 <%- include('partials/header') %>
-
     <div class="container" style="max-width: 1000px;">
         <div class="dashboard-card-wrapper">
             <h2>Customer Dashboard</h2>
             <div class="profile-layout">
-
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-box">
                         <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
@@ -43,7 +41,6 @@
                 </aside>
 
                 <main class="profile-content">
-
                     <div id="profile-tab"
                         class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>">
                         <h3>My Profile Details</h3>
@@ -53,23 +50,37 @@
                                 <label>Display Name:</label>
                                 <input type="text" name="username" value="<%= currentUser.username %>" required>
                             </div>
+
                             <div class="form-group">
-                                <label>Upload New Avatar from Device:</label>
-                                <input type="file" name="avatarFile" accept="image/*"
-                                    style="padding: 8px 0; border: none; background: transparent;">
+                                <label>Avatar:</label>
+                                <input type="file" name="avatarFile" id="customerAvatarFileInput" accept="image/*"
+                                    style="display: none;">
                                 <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
                                     PNG, WEBP</small>
+                                <span id="customerSelectedAvatarFileName"
+                                    style="display: block; margin-top: 6px; font-size: 0.9rem; color: #555;"></span>
                             </div>
-                            <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
-                                <div class="form-group" style="margin-bottom: 15px;">
-                                    <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
-                                        class="btn-primary"
-                                        style="background-color: #c62828; border-color: #c62828; width: 100%; text-align: center;"
-                                        onclick="return confirm('Are you sure you want to delete your profile photo?');">
-                                        Delete Avatar </button>
+
+                            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                                <div style="display: flex; gap: 12px; width: 100%;">
+                                    <button type="button" class="btn-secondary" style="flex: 1;"
+                                        onclick="document.getElementById('customerAvatarFileInput').click();">
+                                        <%= (currentUser.avatar && currentUser.avatar.trim() !=='' ) ? 'Change Avatar'
+                                            : 'Upload Avatar' %>
+                                    </button>
+
+                                    <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                                        <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
+                                            formnovalidate class="btn-danger" style="flex: 1;"
+                                            onclick="return confirm('Are you sure you want to delete your profile photo?');">
+                                            Delete Avatar
+                                        </button>
+                                        <% } %>
                                 </div>
-                                <% } %>
-                                    <button type="submit" class="btn-primary">Save Profile Changes</button>
+
+                                <button type="submit" class="btn-primary" style="width: 100%;">Save Profile
+                                    Changes</button>
+                            </div>
                         </form>
                     </div>
 
@@ -78,19 +89,16 @@
                         <h3>Favorite Restaurants</h3>
                         <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">Restaurants you have bookmarked
                             for quick access.</p>
-
                         <% if (favorites && favorites.length> 0) { %>
                             <div class="managed-restaurants-list">
                                 <% favorites.forEach(r=> { %>
                                     <div class="horizontal-restaurant-card"
                                         style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; <%= r.is_hidden ? 'opacity: 0.7; filter: grayscale(1);' : '' %>">
-
                                         <div
                                             style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
                                             ⭐ <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ?
                                                 Number(r.rating).toFixed(1) : 'New' %> / 5.0
                                         </div>
-
                                         <div class="restaurant-card-main"
                                             style="display: flex; align-items: flex-start; margin-bottom: 8px;">
                                             <div class="restaurant-card-img-wrapper"
@@ -120,22 +128,22 @@
                                                         <div class="managed-restaurant-details"
                                                             style="display: flex; flex-direction: column; gap: 2px;">
                                                             <p class="restaurant-card-field" style="margin: 0;">
-                                                                <strong>Cuisine:</strong> <span
-                                                                    class="restaurant-card-value"
+                                                                <strong>Cuisine:</strong>
+                                                                <span class="restaurant-card-value"
                                                                     title="<%= r.cuisine %>">
                                                                     <%= r.cuisine %>
                                                                 </span>
                                                             </p>
                                                             <p class="restaurant-card-field" style="margin: 0;">
-                                                                <strong>Address:</strong> <span
-                                                                    class="restaurant-card-value"
+                                                                <strong>Address:</strong>
+                                                                <span class="restaurant-card-value"
                                                                     title="<%= r.address %>">
                                                                     <%= r.address %>
                                                                 </span>
                                                             </p>
                                                             <p class="restaurant-description" style="margin: 0;">
-                                                                <strong>Description:</strong> <span
-                                                                    class="restaurant-card-value"
+                                                                <strong>Description:</strong>
+                                                                <span class="restaurant-card-value"
                                                                     title="<%= r.description || '' %>">
                                                                     <%= r.description || 'No description provided yet.'
                                                                         %>
@@ -144,16 +152,14 @@
                                                         </div>
                                             </div>
                                         </div>
-
                                         <div class="restaurant-card-actions"
                                             style="display: flex; gap: 8px; margin-top: 6px; padding-top: 0;">
-                                            <a href="/restaurant/<%= r.id %>" class="btn-secondary action-btn"
-                                                style="flex: 1; text-align: center; text-decoration: none; padding: 6px 10px; font-size: 0.85rem;">View
-                                                Restaurant</a>
+                                            <a href="/restaurant/<%= r.id %>" class="btn-secondary"
+                                                style="flex: 1;">View Restaurant</a>
                                             <form action="/favorites/toggle/<%= r.id %>?redirect=profile&tab=favorites"
                                                 method="POST" style="margin: 0; flex: 1;">
-                                                <button type="submit" class="btn-secondary action-btn delete-btn"
-                                                    style="width: 100%; padding: 6px 10px; font-size: 0.85rem; color: #ff4757; border-color: #ff4757;">Remove</button>
+                                                <button type="submit" class="btn-danger"
+                                                    style="width: 100%;">Remove</button>
                                             </form>
                                         </div>
                                     </div>
@@ -182,10 +188,8 @@
                                             <span style="color: #f39c12; font-weight: bold;">⭐ <%= rev.rating %>
                                                     /5</span>
                                         </div>
-
                                         <p id="review-text-<%= rev.id %>" style="margin: 0 0 10px 0;">"<%= rev.comment
                                                 %>"</p>
-
                                         <form id="edit-form-<%= rev.id %>"
                                             action="/profile/reviews/edit/<%= rev.id %>?tab=reviews" method="POST"
                                             style="display: none; margin-bottom: 10px;">
@@ -200,40 +204,35 @@
                                                 <textarea name="comment" rows="2" required class="form-control"
                                                     style="width: 100%; padding: 6px;"><%= rev.comment %></textarea>
                                             </div>
-                                            <button type="submit" class="btn-primary"
-                                                style="font-size: 0.8rem; padding: 4px 10px;">Save</button>
-                                            <button type="button" class="btn-secondary"
-                                                style="font-size: 0.8rem; padding: 4px 10px;"
-                                                onclick="toggleEditForm('<%= rev.id %>')">Cancel</button>
+                                            <div style="display: flex; gap: 8px;">
+                                                <button type="submit" class="btn-primary">Save</button>
+                                                <button type="button" class="btn-secondary"
+                                                    onclick="toggleEditForm('<%= rev.id %>')">Cancel</button>
+                                            </div>
                                         </form>
-
                                         <% if (rev.is_hidden) { %>
                                             <p
                                                 style="color: #ffa502; font-weight: bold; font-size: 0.85rem; margin: 4px 0;">
                                                 [Hidden] This review is currently hidden.</p>
                                             <% } %>
-
                                                 <div class="review-actions" id="review-actions-<%= rev.id %>"
                                                     style="display: flex; gap: 8px; width: 100%; margin-top: 10px;">
                                                     <button type="button" class="btn-secondary"
                                                         onclick="toggleEditForm('<%= rev.id %>')" <%- rev.is_hidden
                                                         ? 'disabled title="Hidden reviews cannot be edited"' : '' %>
-                                                        style="flex: 1; text-align: center; font-size: 0.8rem; padding:
-                                                        6px 10px;">Edit</button>
-
+                                                        style="flex: 1;">Edit</button>
                                                     <form action="/profile/reviews/toggle/<%= rev.id %>?tab=reviews"
                                                         method="POST" style="flex: 1; margin: 0; display: flex;">
                                                         <button type="submit" class="btn-secondary"
-                                                            style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px;">
+                                                            style="width: 100%;">
                                                             <%= rev.is_hidden ? 'Show' : 'Hide' %>
                                                         </button>
                                                     </form>
-
                                                     <form action="/profile/reviews/delete/<%= rev.id %>?tab=reviews"
                                                         method="POST" style="flex: 1; margin: 0; display: flex;"
                                                         onsubmit="return confirm('Are you sure you want to delete this review?');">
-                                                        <button type="submit" class="btn-secondary"
-                                                            style="width: 100%; text-align: center; font-size: 0.8rem; padding: 6px 10px; color: #ff4757; border-color: #ff4757;">Delete</button>
+                                                        <button type="submit" class="btn-danger"
+                                                            style="width: 100%;">Delete</button>
                                                     </form>
                                                 </div>
                                     </div>
@@ -247,20 +246,17 @@
                     <div id="reservations-tab"
                         class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'reservations-tab') ? 'active' : '' %>">
                         <h3>Table Bookings</h3>
-
                         <% if (myBookings && myBookings.length> 0) { %>
                             <div class="managed-restaurants-list">
                                 <% myBookings.forEach(b=> { %>
                                     <div class="horizontal-restaurant-card"
                                         style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px;">
-
                                         <div
                                             style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
                                             ⭐ <%= (b.restaurant_rating !==null && b.restaurant_rating !==undefined &&
                                                 b.restaurant_rating !=='' ) ? Number(b.restaurant_rating).toFixed(1)
                                                 : 'New' %> / 5.0
                                         </div>
-
                                         <div class="restaurant-card-main"
                                             style="display: flex; align-items: flex-start; margin-bottom: 8px;">
                                             <div class="restaurant-card-img-wrapper"
@@ -283,27 +279,29 @@
                                                         <%= b.restaurant_name %>
                                                     </a>
                                                 </h4>
-
                                                 <div class="managed-restaurant-details" id="booking-info-<%= b.id %>"
                                                     style="display: flex; flex-direction: column; gap: 2px;">
                                                     <p class="restaurant-card-field" style="margin: 0;">
-                                                        <strong>Date:</strong> <span class="restaurant-card-value">
+                                                        <strong>Date:</strong>
+                                                        <span class="restaurant-card-value">
                                                             <%= (b.booking_date || b.book_date) ? new
                                                                 Date(b.booking_date ||
                                                                 b.book_date).toLocaleDateString('en-GB') : 'N/A' %>
                                                         </span>
                                                     </p>
                                                     <p class="restaurant-card-field" style="margin: 0;">
-                                                        <strong>Time:</strong> <span class="restaurant-card-value">
+                                                        <strong>Time:</strong>
+                                                        <span class="restaurant-card-value">
                                                             <%= b.start_time ? b.start_time.substring(0, 5) : '' %> -
                                                                 <%= b.end_time ? b.end_time.substring(0, 5) : '' %>
                                                         </span>
                                                     </p>
-                                                    <p class="restaurant-card-field" style="margin: 0;"><strong>Number
-                                                            of guests:</strong> <span class="restaurant-card-value">
+                                                    <p class="restaurant-card-field" style="margin: 0;">
+                                                        <strong>Number of guests:</strong>
+                                                        <span class="restaurant-card-value">
                                                             <%= b.guest_count || b.guests %>
-                                                        </span></p>
-
+                                                        </span>
+                                                    </p>
                                                     <p class="restaurant-card-field" style="margin: 0;">
                                                         <strong>Status:</strong>
                                                         <span class="restaurant-card-value"
@@ -318,11 +316,9 @@
                                                     method="POST"
                                                     onsubmit="return validateBookingEdit(event, '<%= b.id %>')"
                                                     style="display: none; margin-top: 6px;">
-
                                                     <div id="booking-error-<%= b.id %>"
                                                         style="display: none; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 6px 8px; border-radius: 4px; font-size: 0.75rem; margin-bottom: 6px;">
                                                     </div>
-
                                                     <div class="form-group" style="margin-bottom: 4px;">
                                                         <label style="font-size: 0.75rem;">Date:</label>
                                                         <input type="date" id="date-<%= b.id %>" name="book_date"
@@ -357,40 +353,32 @@
                                                     </div>
                                                     <div style="display: flex; gap: 6px;">
                                                         <button type="submit" class="btn-primary"
-                                                            style="flex: 1; font-size: 0.75rem; padding: 3px;">Save</button>
-                                                        <button type="button" class="btn-secondary"
-                                                            style="flex: 1; font-size: 0.75rem; padding: 3px; background: #fff; color: #000; border: 2px solid #000;"
+                                                            style="flex: 1;">Save</button>
+                                                        <button type="button" class="btn-secondary" style="flex: 1;"
                                                             onclick="toggleEditBooking('<%= b.id %>')">Cancel</button>
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
-
                                         <div class="restaurant-card-actions" id="booking-actions-<%= b.id %>"
                                             style="display: flex; gap: 8px; margin-top: 6px; padding-top: 0;">
-
                                             <% if (b.status !=='confirmed' ) { %>
-                                                <button type="button" class="btn-secondary action-btn"
-                                                    style="flex: 1; background: #fff; color: #000; border: 2px solid #000; padding: 6px 10px; font-size: 0.85rem;"
+                                                <button type="button" class="btn-secondary" style="flex: 1;"
                                                     onclick="toggleEditBooking('<%= b.id %>')">Edit</button>
                                                 <form action="/profile/bookings/delete/<%= b.id %>?tab=reservations"
                                                     method="POST" style="margin: 0; flex: 1;"
                                                     onsubmit="return confirm('Are you sure you want to cancel this booking?');">
-                                                    <button type="submit" class="btn-secondary action-btn delete-btn"
-                                                        style="width: 100%; color: #ff4757; border-color: #ff4757; padding: 6px 10px; font-size: 0.85rem;">Cancel
+                                                    <button type="submit" class="btn-danger" style="width: 100%;">Cancel
                                                         Booking</button>
                                                 </form>
                                                 <% } else { %>
                                                     <form action="/profile/bookings/delete/<%= b.id %>?tab=reservations"
                                                         method="POST" style="margin: 0; width: 100%;"
                                                         onsubmit="return confirm('Are you sure you want to cancel this booking?');">
-                                                        <button type="submit"
-                                                            class="btn-secondary action-btn delete-btn"
-                                                            style="width: 100%; color: #ff4757; border-color: #ff4757; padding: 6px 10px; font-size: 0.85rem;">Cancel
-                                                            Booking</button>
+                                                        <button type="submit" class="btn-danger"
+                                                            style="width: 100%;">Cancel Booking</button>
                                                     </form>
                                                     <% } %>
-
                                         </div>
                                     </div>
                                     <% }) %>
@@ -401,23 +389,6 @@
                                 </div>
                                 <% } %>
                     </div>
-
-                    <script>
-                        function toggleEditBooking(id) {
-                            const infoEl = document.getElementById('booking-info-' + id);
-                            const formEl = document.getElementById('edit-booking-form-' + id);
-                            const actionsEl = document.getElementById('booking-actions-' + id);
-                            if (formEl.style.display === 'none') {
-                                formEl.style.display = 'block';
-                                infoEl.style.display = 'none';
-                                actionsEl.style.display = 'none';
-                            } else {
-                                formEl.style.display = 'none';
-                                infoEl.style.display = 'block';
-                                actionsEl.style.display = 'flex';
-                            }
-                        } 
-                    </script>
 
                     <div id="security-tab"
                         class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'security-tab') ? 'active' : '' %>">
@@ -439,18 +410,39 @@
                             <h4 style="margin-top: 0; color: #ff4757;">Terminate Session</h4>
                             <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Log out of your Food Advisor
                                 account on this device.</p>
-                            <a href="/logout" class="btn-secondary"
-                                style="color: #ff4757; border-color: #ff4757; display: inline-block; text-decoration: none;">Log
-                                Out from Account</a>
+                            <a href="/logout" class="btn-danger">Log Out from Account</a>
                         </div>
                     </div>
-
                 </main>
             </div>
         </div>
     </div>
 
     <script>
+        const customerAvatarFileInput = document.getElementById('customerAvatarFileInput');
+        const customerSelectedAvatarFileName = document.getElementById('customerSelectedAvatarFileName');
+        if (customerAvatarFileInput && customerSelectedAvatarFileName) {
+            customerAvatarFileInput.addEventListener('change', () => {
+                const file = customerAvatarFileInput.files && customerAvatarFileInput.files[0];
+                customerSelectedAvatarFileName.textContent = file ? `Selected file: ${file.name}` : '';
+            });
+        }
+
+        function toggleEditBooking(id) {
+            const infoEl = document.getElementById('booking-info-' + id);
+            const formEl = document.getElementById('edit-booking-form-' + id);
+            const actionsEl = document.getElementById('booking-actions-' + id);
+            if (formEl.style.display === 'none') {
+                formEl.style.display = 'block';
+                infoEl.style.display = 'none';
+                actionsEl.style.display = 'none';
+            } else {
+                formEl.style.display = 'none';
+                infoEl.style.display = 'block';
+                actionsEl.style.display = 'flex';
+            }
+        }
+
         function validateBookingEdit(event, id) {
             const dateInput = document.getElementById('date-' + id).value;
             const startTime = document.getElementById('start-' + id).value;
@@ -480,7 +472,6 @@
                 const selectedDate = new Date(dateInput);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-
                 const maxDate = new Date();
                 maxDate.setFullYear(maxDate.getFullYear() + 1);
                 maxDate.setHours(23, 59, 59, 999);
@@ -490,7 +481,6 @@
                     showError('Cannot select a past date.');
                     return false;
                 }
-
                 if (selectedDate > maxDate) {
                     event.preventDefault();
                     showError('Bookings can only be made up to 1 year in advance.');
@@ -501,21 +491,19 @@
             errorDiv.style.display = 'none';
             return true;
         }
-    </script>
 
-    <script>
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            btn.classList.add('active');
+            const targetTab = document.getElementById(tabId);
+            if (targetTab) targetTab.classList.add('active');
+            if (btn) btn.classList.add('active');
         }
 
         function toggleEditForm(id) {
             const textEl = document.getElementById('review-text-' + id);
             const formEl = document.getElementById('edit-form-' + id);
             const actionsEl = document.getElementById('review-actions-' + id);
-
             if (formEl.style.display === 'none') {
                 formEl.style.display = 'block';
                 textEl.style.display = 'none';
@@ -527,5 +515,4 @@
             }
         }
     </script>
-
     <%- include('partials/footer') %>
