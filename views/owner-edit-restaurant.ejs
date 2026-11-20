@@ -34,7 +34,6 @@
                             rawCuisine=typeof restaurant.cuisine==='string' ? restaurant.cuisine.trim() : '' ; const
                             matchedCuisine=cuisinesList.find((c)=> c.toLowerCase() === rawCuisine.toLowerCase()) ||
                             rawCuisine;
-
                             const selectedCuisine = matchedCuisine;
                             const selectedStreet = typeof restaurant.street === 'string' && restaurant.street.trim()
                             ? restaurant.street.trim()
@@ -99,7 +98,6 @@
                                                                         <% }); %>
                                                 </select>
                                             </div>
-
                                             <div class="form-group" style="flex: 1;">
                                                 <label>Building No. (1-99):</label>
                                                 <select name="building_number" required class="form-control"
@@ -123,46 +121,63 @@
 
                                     <div class="form-group" style="margin-bottom: 20px;">
                                         <label>Current Image:</label>
-                                        <% if (restaurant.image) { %>
-                                            <div style="margin-bottom: 10px;">
+                                        <div
+                                            style="width: 100%; text-align: center; margin-top: 8px; margin-bottom: 10px;">
+                                            <% if (restaurant.image) { %>
                                                 <img id="editRestaurantPreview" src="<%= restaurant.image %>"
                                                     alt="Restaurant Image"
-                                                    style="max-width: 150px; height: auto; border-radius: 4px;">
-                                            </div>
-                                            <% } else { %>
-                                                <p id="editRestaurantNoImageText"
-                                                    style="margin: 6px 0 10px; color: #666;">No image uploaded.</p>
-                                                <img id="editRestaurantPreview" src="" alt="Restaurant Image Preview"
-                                                    style="display: none; max-width: 150px; height: auto; border-radius: 4px; margin-bottom: 10px;">
-                                                <% } %>
+                                                    style="width: 50%; max-width: 50%; height: auto; border-radius: 6px; display: block; margin: 0 auto;">
+                                                <% } else { %>
+                                                    <p id="editRestaurantNoImageText"
+                                                        style="margin: 6px 0 10px; color: #666; text-align: left;">No
+                                                        image uploaded.</p>
+                                                    <img id="editRestaurantPreview" src=""
+                                                        alt="Restaurant Image Preview"
+                                                        style="display: none; width: 50%; max-width: 50%; height: auto; border-radius: 6px; margin: 0 auto;">
+                                                    <% } %>
+                                        </div>
 
-                                                    <input type="file" name="imageFile" id="editImageFileInput"
-                                                        accept="image/*" style="display: none;"
-                                                        onchange="previewEditRestaurantImage(this)">
-                                                    <span id="editSelectedFileName"
-                                                        style="display: block; margin-top: 6px; font-size: 13px; color: #555;"></span>
+                                        <input type="file" name="imageFile" id="editImageFileInput"
+                                            accept="image/jpeg,image/png,image/webp,image/*" style="display: none;">
+                                        <small style="color: #666; display: block; margin-top: 5px;">Supported formats:
+                                            JPG, PNG, WEBP. Maximum file size: 3 MB.</small>
+                                        <span id="editSelectedFileName"
+                                            style="display: block; margin-top: 6px; font-size: 13px; color: #555;"></span>
+
+                                        <div id="editRestaurantImageError" role="alert"
+                                            style="display: none; background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 0.9rem; font-weight: 500;">
+                                        </div>
                                     </div>
 
-                                    <div class="edit-action-rows">
-                                        <div class="edit-button-row <%= restaurant.image ? 'two-cols' : 'one-col' %>">
-                                            <button type="button" class="btn-secondary edit-slot-btn"
+                                    <div class="form-actions"
+                                        style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+                                        <div
+                                            style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
+                                            <button type="button" class="btn-secondary"
+                                                style="width: 100%; min-width: 0; margin: 0;"
                                                 onclick="document.getElementById('editImageFileInput').click();">
                                                 <%= restaurant.image ? 'Change Image' : 'Add Image' %>
                                             </button>
 
                                             <% if (restaurant.image) { %>
                                                 <button type="submit" form="deleteRestaurantImageForm"
-                                                    class="btn-danger edit-slot-btn">
+                                                    class="btn-danger" style="width: 100%; min-width: 0; margin: 0;">
                                                     Remove Image
                                                 </button>
-                                                <% } %>
+                                                <% } else { %>
+                                                    <button type="button" class="btn-danger"
+                                                        style="width: 100%; min-width: 0; margin: 0;" disabled>
+                                                        Remove Image
+                                                    </button>
+                                                    <% } %>
                                         </div>
 
-                                        <div class="edit-button-row two-cols">
-                                            <button type="submit" class="btn-primary edit-slot-btn">Save
-                                                Changes</button>
-                                            <a href="/owner-dashboard"
-                                                class="btn-secondary edit-slot-btn edit-slot-link">Cancel</a>
+                                        <div
+                                            style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
+                                            <button type="submit" class="btn-primary"
+                                                style="width: 100%; min-width: 0; margin: 0;">Save Changes</button>
+                                            <a href="/owner-dashboard" class="btn-secondary"
+                                                style="width: 100%; min-width: 0; margin: 0; text-align: center; text-decoration: none;">Cancel</a>
                                         </div>
                                     </div>
                                 </form>
@@ -176,77 +191,83 @@
         </div>
     </div>
 
-    <style>
-        .edit-action-rows {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
-            width: 100%;
+    <script>
+        const MAX_EDIT_RESTAURANT_IMAGE_BYTES = 3 * 1024 * 1024;
+        const editImageInput = document.getElementById('editImageFileInput');
+        const editSelectedFileName = document.getElementById('editSelectedFileName');
+        const editRestaurantPreview = document.getElementById('editRestaurantPreview');
+        const editRestaurantNoImageText = document.getElementById('editRestaurantNoImageText');
+        const editRestaurantImageError = document.getElementById('editRestaurantImageError');
+        const editRestaurantForm = document.getElementById('editRestaurantForm');
+
+        function showEditRestaurantImageError(message) {
+            if (!editRestaurantImageError) return;
+            editRestaurantImageError.textContent = message;
+            editRestaurantImageError.style.display = message ? 'block' : 'none';
         }
 
-        .edit-button-row {
-            display: grid;
-            gap: 12px;
-            width: 100%;
+        function validateEditRestaurantImageFile(file) {
+            if (!file) return true;
+            if (file.type && !file.type.startsWith('image/')) {
+                showEditRestaurantImageError('Only image files are allowed.');
+                return false;
+            }
+            if (file.size > MAX_EDIT_RESTAURANT_IMAGE_BYTES) {
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                showEditRestaurantImageError(`Image size (${sizeMb} MB) exceeds the 3 MB limit.`);
+                return false;
+            }
+            showEditRestaurantImageError('');
+            return true;
         }
 
-        .edit-button-row.two-cols {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .edit-button-row.one-col {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .edit-slot-btn {
-            width: 100%;
-            min-width: 0;
-            box-sizing: border-box;
-            margin: 0;
-        }
-
-        .edit-slot-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-        }
-    </style>
-    </form>
-
-    <% if (restaurant.image) { %>
-        <form id="deleteRestaurantImageForm" action="/owner/restaurants/<%= restaurant.id %>/delete-image" method="POST"
-            onsubmit="return confirm('Remove restaurant image?');" style="display: none;">
-        </form>
-        <% } %>
-            </div>
-            </div>
-
-            <script>
-                function previewEditRestaurantImage(input) {
-                    const file = input.files && input.files[0];
-                    const nameEl = document.getElementById('editSelectedFileName');
-                    const previewEl = document.getElementById('editRestaurantPreview');
-                    const noImgText = document.getElementById('editRestaurantNoImageText');
-
-                    if (!file) {
-                        if (nameEl) nameEl.textContent = '';
-                        return;
-                    }
-
-                    if (nameEl) nameEl.textContent = 'Selected file: ' + file.name;
-                    if (noImgText) noImgText.style.display = 'none';
-
-                    if (previewEl) {
-                        const reader = new FileReader();
-                        reader.onload = function (e) {
-                            previewEl.src = e.target.result;
-                            previewEl.style.display = 'block';
-                        };
-                        reader.readAsDataURL(file);
-                    }
+        if (editImageInput) {
+            editImageInput.addEventListener('change', () => {
+                const file = editImageInput.files && editImageInput.files[0];
+                if (!file) {
+                    if (editSelectedFileName) editSelectedFileName.textContent = '';
+                    showEditRestaurantImageError('');
+                    return;
                 }
-            </script>
 
-            <%- include('partials/footer') %>
+                if (!validateEditRestaurantImageFile(file)) {
+                    editImageInput.value = '';
+                    if (editSelectedFileName) editSelectedFileName.textContent = '';
+                    return;
+                }
+
+                showEditRestaurantImageError('');
+                if (editSelectedFileName) {
+                    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                    editSelectedFileName.textContent = `Selected file: ${file.name} (${sizeMb} MB)`;
+                }
+                if (editRestaurantNoImageText) {
+                    editRestaurantNoImageText.style.display = 'none';
+                }
+                if (editRestaurantPreview) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        editRestaurantPreview.src = e.target.result;
+                        editRestaurantPreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        if (editRestaurantForm) {
+            editRestaurantForm.addEventListener('submit', (event) => {
+                const submitter = event.submitter;
+                if (submitter && submitter.getAttribute('form') === 'deleteRestaurantImageForm') {
+                    showEditRestaurantImageError('');
+                    return;
+                }
+
+                const file = editImageInput && editImageInput.files && editImageInput.files[0];
+                if (file && !validateEditRestaurantImageFile(file)) {
+                    event.preventDefault();
+                }
+            });
+        }
+    </script>
+    <%- include('partials/footer') %>

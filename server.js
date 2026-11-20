@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024; // 3 MB
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadDir = path.join(__dirname, 'public', 'uploads');
@@ -13,12 +15,14 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'restaurant-' + uniqueSuffix + path.extname(file.originalname));
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        cb(null, 'restaurant-' + uniqueSuffix + ext);
     }
 });
+
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
     fileFilter: (req, file, cb) => {
         if (!file.mimetype || !file.mimetype.startsWith('image/')) {
             return cb(new Error('Only image files are allowed.'));
@@ -105,6 +109,19 @@ const requireRole = (requiredRole) => {
         }
     };
 };
+
+function handleAvatarUpload(req, res, next) {
+    upload.single('avatarFile')(req, res, (err) => {
+        if (!err) return next();
+
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).send('Image size must not exceed 3 MB.');
+        }
+
+        console.error('Avatar upload failed:', err);
+        return res.status(400).send(err.message || 'Avatar upload failed.');
+    });
+}
 
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
@@ -193,6 +210,11 @@ app.post('/favorites/toggle/:id', async (req, res) => {
 function handleRestaurantImageUpload(req, res, next) {
     upload.single('imageFile')(req, res, (err) => {
         if (!err) return next();
+
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return sendRestaurantError(res, 'Image size must not exceed 3 MB.', err, 400);
+        }
+
         console.error('Restaurant image upload failed:', err);
         return sendRestaurantError(res, 'Restaurant image upload failed', err, 400);
     });
@@ -617,35 +639,59 @@ app.post('/restaurant/:id/book', async (req, res) => {
 app.get('/register', (req, res) => res.redirect('/'));
 
 app.post('/register', async (req, res) => {
-    try {
-        const { username, email, password, role } = req.body;
+    const rawUsername = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const rawEmail = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const allowedRoles = ['customer', 'owner'];
+    const userRole = allowedRoles.includes(req.body.role) ? req.body.role : 'customer';
 
-        if (!username || !email || !password) {
-            return res.status(400).send('All fields are required.');
+    const buildRegisterErrorRedirect = (message) => {
+        const params = new URLSearchParams({
+            modal: 'register',
+            error: message,
+            username: rawUsername,
+            email: rawEmail,
+            role: userRole
+        });
+        return res.redirect('/?' + params.toString());
+    };
+
+    try {
+        if (!rawUsername || !rawEmail || !password) {
+            return buildRegisterErrorRedirect('All fields are required.');
+        }
+
+        const [existingUsers] = await db.query(
+            'SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1',
+            [rawEmail]
+        );
+
+        if (Array.isArray(existingUsers) && existingUsers.length > 0) {
+            return buildRegisterErrorRedirect('A user with this email already exists.');
         }
 
         const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        bcrypt.hash(password, saltRounds, async (err, hashedPassword) => {
-            if (err) {
-                console.error('Error hashing password:', err);
-                return res.status(500).send('Server error during registration');
-            }
+        await db.query(
+            'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+            [rawUsername, rawEmail, hashedPassword, userRole]
+        );
 
-            const allowedRoles = ['customer', 'owner'];
-            const userRole = allowedRoles.includes(role) ? role : 'customer';
-
-            await db.query(
-                'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-                [username, email, hashedPassword, userRole]
-            );
-
-            return res.redirect('/?modal=login');
-        });
-
+        return res.redirect('/?modal=login');
     } catch (err) {
+        if (
+            err &&
+            (err.code === 'ER_DUP_ENTRY' ||
+                err.errno === 1062 ||
+                err.code === '23505' ||
+                (typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')))
+        ) {
+            return buildRegisterErrorRedirect('A user with this email already exists.');
+        }
+
         console.error('Registration failed:', err);
-        return res.status(500).send('Server error');
+        return buildRegisterErrorRedirect('Server error during registration. Please try again.');
     }
 });
 
@@ -754,15 +800,31 @@ const ALLOWED_STREETS = [
     'Quicksilver Strand', 'Raventhorpe Thoroughfare', 'Stardust Gate', 'Zephyrion Boulevard'
 ];
 
+function cleanupUploadedFile(file) {
+    if (!file || !file.filename) return;
+    const fullPath = path.join(__dirname, 'public', 'uploads', file.filename);
+    fs.unlink(fullPath, (err) => {
+        if (err && err.code !== 'ENOENT') {
+            console.error('Failed to remove oversized upload:', err);
+        }
+    });
+}
+
 app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/?modal=login');
+        if (!userEmail) {
+            cleanupUploadedFile(req.file);
+            return res.redirect('/?modal=login');
+        }
 
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0 || users[0].role !== 'owner') return res.redirect('/');
-        const currentUser = users[0];
+        if (users.length === 0 || users[0].role !== 'owner') {
+            cleanupUploadedFile(req.file);
+            return res.redirect('/');
+        }
 
+        const currentUser = users[0];
         const { cuisine, street, building_number, image } = req.body || {};
 
         const renderAddError = async (message) => {
@@ -780,26 +842,23 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             }
 
             const [bookings] = await db.query(`
-                SELECT b.id, b.restaurant_id, b.customer_id,
-                       DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-                       TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
-                       TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
-                       b.guest_count, b.status, b.owner_read_at,
-                       r.name AS restaurant_name,
-                       u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar
-                FROM bookings b
-                JOIN restaurants r ON r.id = b.restaurant_id
-                JOIN users u ON u.id = b.customer_id
-                WHERE r.owner_id = ?
-                ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
-            `, [currentUser.id]);
+        SELECT b.id, b.restaurant_id, b.customer_id, DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+               TIME_FORMAT(b.start_time, '%H:%i') AS start_time, TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
+               b.guest_count, b.status, b.owner_read_at, r.name AS restaurant_name,
+               u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar
+        FROM bookings b
+        JOIN restaurants r ON r.id = b.restaurant_id
+        JOIN users u ON u.id = b.customer_id
+        WHERE r.owner_id = ?
+        ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
+      `, [currentUser.id]);
 
             const [unreadRows] = await db.query(`
-                SELECT COUNT(*) AS unread_count
-                FROM bookings b
-                JOIN restaurants r ON r.id = b.restaurant_id
-                WHERE r.owner_id = ? AND b.status = 'pending'
-            `, [currentUser.id]);
+        SELECT COUNT(*) AS unread_count
+        FROM bookings b
+        JOIN restaurants r ON r.id = b.restaurant_id
+        WHERE r.owner_id = ? AND b.status = 'pending'
+      `, [currentUser.id]);
 
             return res.status(400).render('owner-profile', {
                 currentUser,
@@ -820,23 +879,20 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             });
         };
 
-        const nameCheck = validateTextField(req.body?.name, {
-            label: 'Restaurant name',
-            required: true,
-            min: 2,
-            max: 100
-        });
+        if (req.file && req.file.size > MAX_IMAGE_SIZE_BYTES) {
+            cleanupUploadedFile(req.file);
+            return renderAddError('Image size must not exceed 3 MB.');
+        }
+
+        const nameCheck = validateTextField(req.body?.name, { label: 'Restaurant name', required: true, min: 2, max: 100 });
         if (!nameCheck.ok) {
+            cleanupUploadedFile(req.file);
             return renderAddError(nameCheck.error);
         }
 
-        const descCheck = validateTextField(req.body?.description, {
-            label: 'Restaurant description',
-            required: true,
-            min: 10,
-            max: 1000
-        });
+        const descCheck = validateTextField(req.body?.description, { label: 'Restaurant description', required: true, min: 10, max: 1000 });
         if (!descCheck.ok) {
+            cleanupUploadedFile(req.file);
             return renderAddError(descCheck.error);
         }
 
@@ -845,23 +901,25 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
         const buildingNo = parseInt(building_number, 10);
 
         if (!restaurantCuisine || !restaurantStreet || isNaN(buildingNo)) {
+            cleanupUploadedFile(req.file);
             return renderAddError('Cuisine, street, and building number are required.');
         }
-
         if (!ALLOWED_CUISINES.includes(restaurantCuisine)) {
+            cleanupUploadedFile(req.file);
             return renderAddError('Please choose a valid cuisine from the list.');
         }
-
         if (!ALLOWED_STREETS.includes(restaurantStreet)) {
+            cleanupUploadedFile(req.file);
             return renderAddError('Please choose a valid European street from the list.');
         }
-
         if (buildingNo < 1 || buildingNo > 99) {
+            cleanupUploadedFile(req.file);
             return renderAddError('Building number must be between 1 and 99.');
         }
 
         const fullAddress = `${restaurantStreet}, ${buildingNo}`;
         if (restaurantCuisine.length > 100 || fullAddress.length > 255) {
+            cleanupUploadedFile(req.file);
             return renderAddError('Cuisine must be at most 100 characters and address at most 255.');
         }
 
@@ -876,6 +934,7 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
 
         return res.redirect('/owner-dashboard');
     } catch (err) {
+        cleanupUploadedFile(req.file);
         console.error('Failed to add restaurant:', err);
         return sendRestaurantError(res, 'Failed to add restaurant', err);
     }
@@ -913,10 +972,14 @@ app.get('/owner/restaurants/:id/edit', async (req, res) => {
 app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req, res) => {
     try {
         const owner = await getOwnerFromRequest(req);
-        if (!owner) return res.redirect('/?modal=login');
+        if (!owner) {
+            cleanupUploadedFile(req.file);
+            return res.redirect('/?modal=login');
+        }
 
         const restaurantId = Number(req.params.id);
         if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0) {
+            cleanupUploadedFile(req.file);
             return res.status(404).send('Restaurant not found.');
         }
 
@@ -925,6 +988,7 @@ app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req,
             [restaurantId, owner.id]
         );
         if (restaurants.length === 0) {
+            cleanupUploadedFile(req.file);
             return res.status(404).send('Restaurant not found or not owned by you.');
         }
 
@@ -956,23 +1020,20 @@ app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req,
             });
         };
 
-        const nameCheck = validateTextField(rawName, {
-            label: 'Restaurant name',
-            required: true,
-            min: 2,
-            max: 100
-        });
+        if (req.file && req.file.size > MAX_IMAGE_SIZE_BYTES) {
+            cleanupUploadedFile(req.file);
+            return renderEditError('Image size must not exceed 3 MB.');
+        }
+
+        const nameCheck = validateTextField(rawName, { label: 'Restaurant name', required: true, min: 2, max: 100 });
         if (!nameCheck.ok) {
+            cleanupUploadedFile(req.file);
             return renderEditError(nameCheck.error);
         }
 
-        const descCheck = validateTextField(rawDescription, {
-            label: 'Restaurant description',
-            required: true,
-            min: 10,
-            max: 1000
-        });
+        const descCheck = validateTextField(rawDescription, { label: 'Restaurant description', required: true, min: 10, max: 1000 });
         if (!descCheck.ok) {
+            cleanupUploadedFile(req.file);
             return renderEditError(descCheck.error);
         }
 
@@ -980,6 +1041,7 @@ app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req,
             ? ALLOWED_CUISINES.find((c) => c.toLowerCase() === rawCuisine.toLowerCase())
             : rawCuisine;
         if (!rawCuisine || !matchedCuisine) {
+            cleanupUploadedFile(req.file);
             return renderEditError('Please select a valid cuisine type.');
         }
 
@@ -987,10 +1049,12 @@ app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req,
             ? ALLOWED_STREETS.find((s) => s.toLowerCase() === rawStreet.toLowerCase())
             : rawStreet;
         if (!rawStreet || !matchedStreet) {
+            cleanupUploadedFile(req.file);
             return renderEditError('Please select a valid street name.');
         }
 
         if (!Number.isInteger(parsedBuilding) || parsedBuilding < 1 || parsedBuilding > 99) {
+            cleanupUploadedFile(req.file);
             return renderEditError('Building number must be between 1 and 99.');
         }
 
@@ -1004,6 +1068,7 @@ app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req,
 
         return res.redirect('/owner-dashboard');
     } catch (err) {
+        cleanupUploadedFile(req.file);
         console.error('Failed to update restaurant:', err);
         return sendRestaurantError(res, 'Failed to update restaurant', err);
     }
@@ -1587,6 +1652,41 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
+app.post('/profile/update', handleAvatarUpload, async (req, res) => {
+    try {
+        const userEmail = req.cookies.user_email;
+        if (!userEmail) return res.redirect('/');
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
+        if (users.length === 0) return res.redirect('/');
+
+        const currentUser = users[0];
+        const nextUsername =
+            typeof req.body?.username === 'string' && req.body.username.trim()
+                ? req.body.username.trim()
+                : currentUser.username;
+
+        let avatarPath = currentUser.avatar;
+        if (req.file) {
+            if (req.file.size > MAX_IMAGE_SIZE_BYTES) {
+                return res.status(400).send('Image size must not exceed 3 MB.');
+            }
+            avatarPath = '/uploads/' + req.file.filename;
+        }
+
+        await db.query(
+            'UPDATE users SET username = ?, avatar = ? WHERE email = ?',
+            [nextUsername, avatarPath, userEmail]
+        );
+
+        if (currentUser.role === 'admin') return res.redirect('/admin');
+        return res.redirect('/profile');
+    } catch (err) {
+        console.error(err);
+        return res.status(500).send('Server error during profile update');
+    }
+});
+
 app.post('/profile/bookings/edit/:id', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -1845,29 +1945,6 @@ app.get('/profile', isAuthenticated, async (req, res) => {
     }
 });
 
-app.post('/profile/update', upload.single('avatarFile'), async (req, res) => {
-    try {
-        const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/');
-
-        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0) return res.redirect('/');
-        const currentUser = users[0];
-
-        let avatarPath = currentUser.avatar;
-        if (req.file) avatarPath = '/uploads/' + req.file.filename;
-
-        await db.query('UPDATE users SET username = ?, avatar = ? WHERE email = ?', [req.body.username, avatarPath, userEmail]);
-
-        if (currentUser.role === 'admin') return res.redirect('/admin');
-
-        res.redirect('/profile');
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error during profile update');
-    }
-});
-
 app.post('/profile/avatar/delete', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -1887,7 +1964,7 @@ app.post('/profile/avatar/delete', async (req, res) => {
         return res.redirect('/profile');
     } catch (err) {
         console.error('Failed to delete avatar:', err);
-        res.status(500).send('Server error during avatar deletion');
+        return res.status(500).send('Server error during avatar deletion');
     }
 });
 

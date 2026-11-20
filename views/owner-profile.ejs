@@ -21,12 +21,14 @@
 
                     <nav class="profile-nav">
                         <button type="button"
-                            class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>"
+                            class="profile-nav-btn <%= (typeof activeTab === 'undefined' || activeTab === 'profile-tab') ? 'active' : '' %>"
                             onclick="showTab('profile-tab', this)">Profile Info</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('restaurants-tab', this)">My
-                            Restaurants</button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('add-restaurant-tab', this)">Add
-                            Restaurant</button>
+                        <button type="button"
+                            class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'restaurants-tab') ? 'active' : '' %>"
+                            onclick="showTab('restaurants-tab', this)">My Restaurants</button>
+                        <button type="button"
+                            class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'add-restaurant-tab') ? 'active' : '' %>"
+                            onclick="showTab('add-restaurant-tab', this)">Add Restaurant</button>
                         <button type="button"
                             class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'reservations-tab') ? 'active' : '' %>"
                             onclick="showTab('reservations-tab', this)">
@@ -36,8 +38,9 @@
                                 <%= typeof unreadBookingCount !=='undefined' ? unreadBookingCount : 0 %>
                             </span>
                         </button>
-                        <button type="button" class="profile-nav-btn" onclick="showTab('security-tab', this)">Security
-                            Settings</button>
+                        <button type="button"
+                            class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'security-tab') ? 'active' : '' %>"
+                            onclick="showTab('security-tab', this)">Security Settings</button>
                     </nav>
                 </aside>
 
@@ -46,373 +49,555 @@
                         style="display: none; padding: 12px; border-radius: 6px; background: #fff3cd; color: #664d03;">
                     </p>
 
-                    <div id="profile-tab"
-                        class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>">
-                        <h3>Owner Profile Details</h3>
-                        <form action="/profile/update" method="POST" enctype="multipart/form-data"
-                            style="margin-top: 20px;">
-                            <div class="form-group">
-                                <label>Display Name:</label>
-                                <input type="text" name="username" value="<%= currentUser.username %>" required>
-                            </div>
+                    <% const serverOwnerProfileError=(typeof profileError !=='undefined' && profileError) ? profileError
+                        : '' ; const serverOwnerProfileSuccess=(typeof successMessage !=='undefined' && successMessage)
+                        ? successMessage : '' ; %>
 
-                            <div class="form-group">
-                                <label>Avatar:</label>
-                                <input type="file" name="avatarFile" id="avatarFileInput" accept="image/*"
-                                    style="display: none;">
-                                <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
-                                    PNG, WEBP</small>
-                                <span id="selectedAvatarFileName"
-                                    style="display: block; margin-top: 6px; font-size: 0.9rem; color: #555;"></span>
-                            </div>
+                        <div id="profile-tab"
+                            class="tab-pane <%= (typeof activeTab === 'undefined' || activeTab === 'profile-tab') ? 'active' : '' %>">
+                            <h3>Owner Profile Details</h3>
 
-                            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-                                <div style="display: flex; gap: 12px; width: 100%;">
-                                    <button type="button" class="btn-secondary" style="flex: 1;"
-                                        onclick="document.getElementById('avatarFileInput').click();">
-                                        <%= (currentUser.avatar && currentUser.avatar.trim() !=='' ) ? 'Change Avatar'
-                                            : 'Upload Avatar' %>
-                                    </button>
-
-                                    <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
-                                        <button type="submit" formaction="/profile/avatar/delete" formmethod="POST"
-                                            formnovalidate class="btn-danger" style="flex: 1;"
-                                            onclick="return confirm('Are you sure you want to delete your profile photo?');">
-                                            Delete Avatar
-                                        </button>
-                                        <% } %>
+                            <% if (serverOwnerProfileSuccess) { %>
+                                <div
+                                    style="background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 10px 12px; border-radius: 6px; margin-top: 14px; font-size: 0.9rem;">
+                                    <%= serverOwnerProfileSuccess %>
                                 </div>
-
-                                <button type="submit" class="btn-primary" style="width: 100%;">Save Profile
-                                    Changes</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div id="restaurants-tab" class="tab-pane">
-                        <h3>My Managed Restaurants</h3>
-                        <% if (myRestaurants && myRestaurants.length> 0) { %>
-                            <div class="managed-restaurants-list">
-                                <% myRestaurants.forEach(r=> { %>
-                                    <div class="horizontal-restaurant-card"
-                                        style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; <%= r.is_hidden ? 'opacity: 0.7; filter: grayscale(1);' : '' %>">
-                                        <div
-                                            style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
-                                            ⭐ <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ?
-                                                Number(r.rating).toFixed(1) : 'New' %> / 5.0
-                                        </div>
-                                        <div class="restaurant-card-main"
-                                            style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-                                            <div class="restaurant-card-img-wrapper"
-                                                style="height: 95px; width: 95px; min-width: 95px;">
-                                                <% if (r.image) { %>
-                                                    <img src="<%= r.image %>" alt="<%= r.name %>"
-                                                        class="horizontal-restaurant-img"
-                                                        style="height: 95px; width: 95px; object-fit: cover;">
-                                                    <% } else { %>
-                                                        <img src="/images/No%20image.png" alt="No image"
-                                                            class="horizontal-restaurant-img"
-                                                            style="height: 95px; width: 95px; object-fit: cover;">
-                                                        <% } %>
-                                            </div>
-                                            <div class="restaurant-card-info"
-                                                style="width: 100%; margin-left: 12px; padding-right: 70px;">
-                                                <h4 title="<%= r.name %>" style="margin: 0 0 4px 0;">
-                                                    <%= r.name %>
-                                                </h4>
-                                                <% if (r.is_hidden) { %>
-                                                    <p style="margin: 4px 0; font-weight: bold; color: #c62828;">Hidden
-                                                        by admin</p>
-                                                    <p
-                                                        style="margin: 0 0 6px 0; font-size: 0.85rem; font-weight: bold;">
-                                                        This restaurant is hidden from the public. Only an administrator
-                                                        can make it visible again.</p>
-                                                    <% } %>
-                                                        <div class="managed-restaurant-details"
-                                                            style="display: flex; flex-direction: column; gap: 2px;">
-                                                            <p class="restaurant-card-field" style="margin: 0;">
-                                                                <strong>Cuisine:</strong>
-                                                                <span class="restaurant-card-value"
-                                                                    title="<%= r.cuisine %>">
-                                                                    <%= r.cuisine %>
-                                                                </span>
-                                                            </p>
-                                                            <p class="restaurant-card-field" style="margin: 0;">
-                                                                <strong>Address:</strong>
-                                                                <span class="restaurant-card-value"
-                                                                    title="<%= r.address %>">
-                                                                    <%= r.address %>
-                                                                </span>
-                                                            </p>
-                                                            <p class="restaurant-description" style="margin: 0;">
-                                                                <strong>Description:</strong>
-                                                                <span class="restaurant-card-value"
-                                                                    title="<%= r.description || '' %>">
-                                                                    <%= r.description || 'No description provided yet.'
-                                                                        %>
-                                                                </span>
-                                                            </p>
-                                                        </div>
-                                            </div>
-                                        </div>
-                                        <div class="restaurant-card-actions"
-                                            style="display: flex; gap: 8px; margin-top: 6px; padding-top: 0;">
-                                            <a href="/owner/restaurants/<%= r.id %>/menu"
-                                                class="btn-secondary action-btn"
-                                                style="flex: 1; text-align: center; text-decoration: none;">Manage
-                                                Menu</a>
-                                            <a href="/owner/restaurants/<%= r.id %>/edit"
-                                                class="btn-secondary action-btn"
-                                                style="flex: 1; text-align: center; text-decoration: none;">Edit</a>
-                                            <form action="/owner/restaurants/delete/<%= r.id %>" method="POST"
-                                                style="margin: 0; flex: 1;"
-                                                onsubmit="return confirm('Delete this restaurant? Its menu items, reviews, and favorites will also be deleted.');">
-                                                <button type="submit" class="btn-danger"
-                                                    style="width: 100%;">Delete</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    <% }) %>
-                            </div>
-                            <% } else { %>
-                                <p>You haven't added any restaurants yet. Use the "Add Restaurant" tab to create one.
-                                </p>
                                 <% } %>
-                    </div>
 
-                    <div id="add-restaurant-tab" class="tab-pane">
-                        <h3>Add New Restaurant</h3>
-                        <% if (errorMessage) { %>
-                            <div class="form-error-banner" role="alert">
-                                <%= errorMessage %>
-                            </div>
-                            <% } %>
-                                <form action="/owner/restaurants/add" method="POST" enctype="multipart/form-data"
-                                    style="margin-top: 15px;">
-                                    <div class="form-group">
-                                        <label>Restaurant Name:</label>
-                                        <input type="text" name="name"
-                                            value="<%= addFormData ? addFormData.name : '' %>" required minlength="2"
-                                            maxlength="100" placeholder="Restaurant name">
+                                    <div id="ownerAvatarError" role="alert"
+                                        style="display: <%= serverOwnerProfileError ? 'block' : 'none' %>; background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-top: 14px; font-size: 0.9rem; font-weight: 500;">
+                                        <%= serverOwnerProfileError %>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Cuisine Type:</label>
-                                        <select name="cuisine" class="form-control"
-                                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;"
-                                            required>
-                                            <% const selectedCuisine=addFormData ? addFormData.cuisine : '' ; %>
-                                                <option value="" disabled <%=!selectedCuisine ? 'selected' : '' %>
-                                                    >Select a cuisine...</option>
-                                                <% const cuisinesList=['Italian', 'Japanese' , 'Chinese' , 'Mexican'
-                                                    , 'American' , 'French' , 'Indian' , 'Thai' , 'Korean' , 'Turkish'
-                                                    , 'Georgian' , 'Mediterranean' , 'Spanish' , 'Greek' , 'Vietnamese'
-                                                    , 'Middle Eastern' , 'Brazilian' , 'Seafood' , 'Steakhouse'
-                                                    , 'Fast Food' ]; %>
-                                                    <% cuisinesList.forEach(c=> { %>
+
+                                    <form id="ownerProfileForm" action="/profile/update" method="POST"
+                                        enctype="multipart/form-data" style="margin-top: 20px;">
+                                        <div class="form-group">
+                                            <label>Display Name:</label>
+                                            <input type="text" name="username" value="<%= currentUser.username %>"
+                                                required>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>Avatar:</label>
+                                            <input type="file" name="avatarFile" id="avatarFileInput"
+                                                accept="image/jpeg,image/png,image/webp,image/*" style="display: none;">
+                                            <small style="color: #666; display: block; margin-top: 5px;">Supported
+                                                formats: JPG, PNG, WEBP. Maximum file size: 3 MB.</small>
+                                            <span id="selectedAvatarFileName"
+                                                style="display: block; margin-top: 6px; font-size: 0.9rem; color: #555;"></span>
+                                        </div>
+
+                                        <div
+                                            style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                                            <div style="display: flex; gap: 12px; width: 100%;">
+                                                <button type="button" class="btn-secondary" style="flex: 1;"
+                                                    onclick="document.getElementById('avatarFileInput').click();">
+                                                    <%= (currentUser.avatar && currentUser.avatar.trim() !=='' )
+                                                        ? 'Change Avatar' : 'Upload Avatar' %>
+                                                </button>
+
+                                                <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
+                                                    <button type="submit" formaction="/profile/avatar/delete"
+                                                        formmethod="POST" formnovalidate class="btn-danger"
+                                                        style="flex: 1;"
+                                                        onclick="return confirm('Are you sure you want to delete your profile photo?');">
+                                                        Delete Avatar
+                                                    </button>
+                                                    <% } %>
+                                            </div>
+
+                                            <button type="submit" class="btn-primary" style="width: 100%;">Save Profile
+                                                Changes</button>
+                                        </div>
+                                    </form>
+                        </div>
+
+                        <div id="restaurants-tab"
+                            class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'restaurants-tab') ? 'active' : '' %>">
+                            <h3>My Managed Restaurants</h3>
+                            <% if (myRestaurants && myRestaurants.length> 0) { %>
+                                <div class="managed-restaurants-list">
+                                    <% myRestaurants.forEach(function(r) { %>
+                                        <% const ratingText=(r.rating !==null && r.rating !==undefined && r.rating !==''
+                                            ) ? Number(r.rating).toFixed(1) : 'New' ; %>
+                                            <div class="horizontal-restaurant-card"
+                                                style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; <%= r.is_hidden ? 'opacity: 0.7; filter: grayscale(1);' : '' %>">
+                                                <div
+                                                    style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
+                                                    <%= ratingText %> / 5.0
+                                                </div>
+                                                <div class="restaurant-card-main"
+                                                    style="display: flex; align-items: flex-start; margin-bottom: 8px;">
+                                                    <div class="restaurant-card-img-wrapper"
+                                                        style="height: 95px; width: 95px; min-width: 95px;">
+                                                        <% if (r.image) { %>
+                                                            <img src="<%= r.image %>" alt="<%= r.name %>"
+                                                                class="horizontal-restaurant-img"
+                                                                style="height: 95px; width: 95px; object-fit: cover;">
+                                                            <% } else { %>
+                                                                <img src="/images/No%20image.png" alt="No image"
+                                                                    class="horizontal-restaurant-img"
+                                                                    style="height: 95px; width: 95px; object-fit: cover;">
+                                                                <% } %>
+                                                    </div>
+                                                    <div class="restaurant-card-info"
+                                                        style="width: 100%; margin-left: 12px; padding-right: 70px;">
+                                                        <h4 title="<%= r.name %>" style="margin: 0 0 4px 0;">
+                                                            <%= r.name %>
+                                                        </h4>
+                                                        <% if (r.is_hidden) { %>
+                                                            <p
+                                                                style="margin: 4px 0; font-weight: bold; color: #c62828;">
+                                                                Hidden by admin</p>
+                                                            <p
+                                                                style="margin: 0 0 6px 0; font-size: 0.85rem; font-weight: bold;">
+                                                                This restaurant is hidden from the public. Only an
+                                                                administrator can make it visible again.</p>
+                                                            <% } %>
+                                                                <div class="managed-restaurant-details"
+                                                                    style="display: flex; flex-direction: column; gap: 2px;">
+                                                                    <p class="restaurant-card-field" style="margin: 0;">
+                                                                        <strong>Cuisine:</strong>
+                                                                        <span class="restaurant-card-value"
+                                                                            title="<%= r.cuisine %>">
+                                                                            <%= r.cuisine %>
+                                                                        </span>
+                                                                    </p>
+                                                                    <p class="restaurant-card-field" style="margin: 0;">
+                                                                        <strong>Address:</strong>
+                                                                        <span class="restaurant-card-value"
+                                                                            title="<%= r.address %>">
+                                                                            <%= r.address %>
+                                                                        </span>
+                                                                    </p>
+                                                                    <p class="restaurant-description"
+                                                                        style="margin: 0;">
+                                                                        <strong>Description:</strong>
+                                                                        <span class="restaurant-card-value"
+                                                                            title="<%= r.description || '' %>">
+                                                                            <%= r.description
+                                                                                || 'No description provided yet.' %>
+                                                                        </span>
+                                                                    </p>
+                                                                </div>
+                                                    </div>
+                                                </div>
+                                                <div class="restaurant-card-actions"
+                                                    style="display: flex; gap: 8px; margin-top: 6px; padding-top: 0;">
+                                                    <a href="/owner/restaurants/<%= r.id %>/menu" class="btn-secondary"
+                                                        style="flex: 1;">Manage Menu</a>
+                                                    <a href="/owner/restaurants/<%= r.id %>/edit" class="btn-secondary"
+                                                        style="flex: 1;">Edit</a>
+                                                    <form action="/owner/restaurants/delete/<%= r.id %>" method="POST"
+                                                        style="margin: 0; flex: 1;"
+                                                        onsubmit="return confirm('Delete this restaurant? Its menu items, reviews, and favorites will also be deleted.');">
+                                                        <button type="submit" class="btn-danger"
+                                                            style="width: 100%;">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                            <% }); %>
+                                </div>
+                                <% } else { %>
+                                    <p>You haven't added any restaurants yet. Use the "Add Restaurant" tab to create
+                                        one.</p>
+                                    <% } %>
+                        </div>
+
+                        <div id="add-restaurant-tab"
+                            class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'add-restaurant-tab') ? 'active' : '' %>">
+                            <h3>Add New Restaurant</h3>
+
+                            <% if (typeof errorMessage !=='undefined' && errorMessage) { %>
+                                <div class="form-error-banner" role="alert">
+                                    <%= errorMessage %>
+                                </div>
+                                <% } %>
+
+                                    <% const formData=(typeof addFormData !=='undefined' && addFormData) ? addFormData :
+                                        {}; const selectedCuisine=formData.cuisine || '' ; const
+                                        selectedStreet=formData.street || '' ; const
+                                        selectedBuilding=formData.building_number ? Number(formData.building_number) :
+                                        1; const cuisinesList=['Italian', 'Japanese' , 'Chinese' , 'Mexican'
+                                        , 'American' , 'French' , 'Indian' , 'Thai' , 'Korean' , 'Turkish' , 'Georgian'
+                                        , 'Mediterranean' , 'Spanish' , 'Greek' , 'Vietnamese' , 'Middle Eastern'
+                                        , 'Brazilian' , 'Seafood' , 'Steakhouse' , 'Fast Food' ]; const
+                                        fakeEuropeanStreets=['Aethelgard Avenue', 'Borealis Boulevard' , 'Caelum Lane'
+                                        , 'Duskwood Crescent' , 'Eldoria Way' , 'Faelivor Square' , 'Glimmerfen Drive'
+                                        , 'Havencrest Alley' , 'Illoria Passage' , 'Jovian Terrace' , 'Kinsale Walk'
+                                        , 'LUNARIS Parkway' , 'Mirthwood Row' , 'Nebula Circle' , 'Oakhaven Loop'
+                                        , 'Pendragon Close' , 'Quicksilver Strand' , 'Raventhorpe Thoroughfare'
+                                        , 'Stardust Gate' , 'Zephyrion Boulevard' ]; %>
+
+                                        <form id="addRestaurantForm" action="/owner/restaurants/add" method="POST"
+                                            enctype="multipart/form-data" style="margin-top: 15px;">
+                                            <div class="form-group">
+                                                <label>Restaurant Name:</label>
+                                                <input type="text" name="name" value="<%= formData.name || '' %>"
+                                                    required minlength="2" maxlength="100"
+                                                    placeholder="Restaurant name">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Cuisine Type:</label>
+                                                <select name="cuisine" class="form-control"
+                                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;"
+                                                    required>
+                                                    <option value="" disabled <%=!selectedCuisine ? 'selected' : '' %>
+                                                        >Select a cuisine...</option>
+                                                    <% cuisinesList.forEach(function(c) { %>
                                                         <option value="<%= c %>" <%=selectedCuisine===c ? 'selected'
                                                             : '' %>><%= c %>
                                                         </option>
-                                                        <% }) %>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Address:</label>
-                                        <div style="display: flex; gap: 10px;">
-                                            <div class="form-group" style="flex: 2;">
-                                                <label>Street Name:</label>
-                                                <select name="street" required class="form-control">
-                                                    <% const selectedStreet=addFormData ? addFormData.street : '' ; %>
-                                                        <option value="">Select European Street</option>
-                                                        <% const fakeEuropeanStreets=[ 'Aethelgard Avenue'
-                                                            , 'Borealis Boulevard' , 'Caelum Lane' , 'Duskwood Crescent'
-                                                            , 'Eldoria Way' , 'Faelivor Square' , 'Glimmerfen Drive'
-                                                            , 'Havencrest Alley' , 'Illoria Passage' , 'Jovian Terrace'
-                                                            , 'Kinsale Walk' , 'LUNARIS Parkway' , 'Mirthwood Row'
-                                                            , 'Nebula Circle' , 'Oakhaven Loop' , 'Pendragon Close'
-                                                            , 'Quicksilver Strand' , 'Raventhorpe Thoroughfare'
-                                                            , 'Stardust Gate' , 'Zephyrion Boulevard' ]; %>
-                                                            <% fakeEuropeanStreets.forEach(street=> { %>
+                                                        <% }); %>
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>Address:</label>
+                                                <div style="display: flex; gap: 10px;">
+                                                    <div class="form-group" style="flex: 2;">
+                                                        <label>Street Name:</label>
+                                                        <select name="street" required class="form-control">
+                                                            <option value="">Select European Street</option>
+                                                            <% fakeEuropeanStreets.forEach(function(street) { %>
                                                                 <option value="<%= street %>" <%=selectedStreet===street
                                                                     ? 'selected' : '' %>><%= street %>
                                                                 </option>
-                                                                <% }) %>
-                                                </select>
+                                                                <% }); %>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group" style="flex: 1;">
+                                                        <label>Building No. (1-99):</label>
+                                                        <select name="building_number" required class="form-control">
+                                                            <% for (let i=1; i <=99; i++) { %>
+                                                                <option value="<%= i %>" <%=selectedBuilding===i
+                                                                    ? 'selected' : '' %>><%= i %>
+                                                                </option>
+                                                                <% } %>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="form-group" style="flex: 1;">
-                                                <label>Building No. (1-99):</label>
-                                                <select name="building_number" required class="form-control">
-                                                    <% const selectedBuilding=addFormData ?
-                                                        Number(addFormData.building_number) : 1; %>
-                                                        <% for (let i=1; i <=99; i++) { %>
-                                                            <option value="<%= i %>" <%=selectedBuilding===i
-                                                                ? 'selected' : '' %>><%= i %>
-                                                            </option>
-                                                            <% } %>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Description:</label>
-                                        <textarea name="description" required minlength="10" maxlength="1000"
-                                            placeholder="Describe the restaurant..."><%= addFormData ? addFormData.description : '' %></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Restaurant Image:</label>
-                                        <div class="restaurant-upload-dropzone">
-                                            <input type="file" name="imageFile" accept="image/*" id="fileInput"
-                                                style="display: none;">
-                                            <img id="restaurantImagePreview" class="restaurant-upload-preview"
-                                                alt="Selected restaurant image preview">
-                                            <button type="button" class="btn-secondary"
-                                                onclick="document.getElementById('fileInput').click();">📸 Choose
-                                                photo</button>
-                                            <p id="restaurantImageHint" class="restaurant-upload-hint">Image preview
-                                                will appear here.</p>
-                                        </div>
-                                    </div>
-                                    <button type="submit" class="btn-primary"
-                                        style="margin-top: 15px; width: 100%;">Publish Restaurant</button>
-                                </form>
-                    </div>
 
-                    <div id="reservations-tab"
-                        class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'reservations-tab') ? 'active' : '' %>">
-                        <h3>Restaurant Bookings</h3>
-                        <% if (typeof bookings !=='undefined' && bookings && bookings.length> 0) { %>
-                            <div class="managed-restaurants-list">
-                                <% bookings.forEach(function(booking) { %>
-                                    <div class="horizontal-restaurant-card"
-                                        style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px;">
-                                        <div class="restaurant-card-main"
-                                            style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-                                            <div class="restaurant-card-img-wrapper"
-                                                style="height: 65px; width: 65px; min-width: 65px; display: flex; align-items: center; justify-content: center;">
-                                                <% if (booking.customer_avatar && booking.customer_avatar.trim() !=='' )
-                                                    { %>
-                                                    <img src="<%= booking.customer_avatar %>" alt="Customer Avatar"
-                                                        class="horizontal-restaurant-img"
-                                                        style="height: 65px; width: 65px; border-radius: 50%; object-fit: cover;">
-                                                    <% } else { %>
-                                                        <div
-                                                            style="height: 65px; width: 65px; border-radius: 50%; background: #e9ecef; color: #333; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.4rem;">
-                                                            <%= booking.customer_email ?
-                                                                booking.customer_email.charAt(0).toUpperCase() :
-                                                                (booking.customer_name ?
-                                                                booking.customer_name.charAt(0).toUpperCase() : 'U' ) %>
-                                                        </div>
-                                                        <% } %>
+                                            <div class="form-group">
+                                                <label>Description:</label>
+                                                <textarea name="description" required minlength="10" maxlength="1000"
+                                                    placeholder="Describe the restaurant..."><%= formData.description || '' %></textarea>
                                             </div>
-                                            <div class="restaurant-card-info" style="width: 100%; margin-left: 14px;">
-                                                <h4 title="<%= booking.restaurant_name %>" style="margin: 0 0 4px 0;">
-                                                    <%= booking.restaurant_name %>
-                                                </h4>
-                                                <div class="managed-restaurant-details"
-                                                    style="display: flex; flex-direction: column; gap: 2px;">
-                                                    <p class="restaurant-card-field" style="margin: 0;">
-                                                        <strong>Customer:</strong>
-                                                        <span class="restaurant-card-value">
-                                                            <%= booking.customer_name %>
-                                                        </span>
-                                                    </p>
-                                                    <p class="restaurant-card-field" style="margin: 0;">
-                                                        <strong>Date & Time:</strong>
-                                                        <span class="restaurant-card-value">
-                                                            <%= booking.booking_date %> | <%= booking.start_time %> –
-                                                                    <%= booking.end_time %>
-                                                        </span>
-                                                    </p>
-                                                    <p class="restaurant-card-field" style="margin: 0;">
-                                                        <strong>Number of guests:</strong>
-                                                        <span class="restaurant-card-value">
-                                                            <%= booking.guest_count %>
-                                                        </span>
-                                                    </p>
-                                                    <p class="restaurant-card-field" style="margin: 0;">
-                                                        <strong>Status:</strong>
-                                                        <span class="restaurant-card-value"
-                                                            style="text-transform: capitalize; font-weight: bold; color: <%= booking.status === 'confirmed' ? '#2e7d32' : (booking.status === 'cancelled' ? '#c62828' : '#e65100') %>;">
-                                                            <%= booking.status %>
-                                                        </span>
+
+                                            <div class="form-group">
+                                                <label>Restaurant Image:</label>
+                                                <div class="restaurant-upload-dropzone">
+                                                    <input type="file" name="imageFile"
+                                                        accept="image/jpeg,image/png,image/webp,image/*" id="fileInput"
+                                                        style="display: none;">
+                                                    <img id="restaurantImagePreview" class="restaurant-upload-preview"
+                                                        alt="Selected restaurant image preview">
+                                                    <button type="button" class="btn-secondary"
+                                                        onclick="document.getElementById('fileInput').click();">Choose
+                                                        photo</button>
+                                                    <p id="restaurantImageHint" class="restaurant-upload-hint">Image
+                                                        preview will appear here. Supported formats: JPG, PNG, WEBP (max
+                                                        3 MB).</p>
+                                                    <p id="restaurantImageWeightWarning" role="alert"
+                                                        style="display: none; margin: 8px 0 0 0; padding: 10px 12px; border-radius: 6px; background-color: #ffebee; border: 1px solid #ef9a9a; color: #c62828; font-size: 0.9rem; font-weight: 500;">
                                                     </p>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="restaurant-card-actions"
-                                            style="display: flex; gap: 8px; margin-top: 8px; padding-top: 0;">
-                                            <% if (booking.status==='pending' ) { %>
-                                                <form action="/owner/bookings/<%= booking.id %>/status" method="POST"
-                                                    style="margin: 0; flex: 1;">
-                                                    <input type="hidden" name="status" value="confirmed">
-                                                    <button type="submit" class="btn-secondary action-btn"
-                                                        style="width: 100%;">Confirm</button>
-                                                </form>
-                                                <form action="/owner/bookings/<%= booking.id %>/status" method="POST"
-                                                    style="margin: 0; flex: 1;">
-                                                    <input type="hidden" name="status" value="cancelled">
-                                                    <button type="submit" class="btn-danger action-btn"
-                                                        style="width: 100%;">Cancel</button>
-                                                </form>
-                                                <% } else { %>
-                                                    <form action="/owner/bookings/<%= booking.id %>/delete"
-                                                        method="POST" style="margin: 0; width: 100%;"
-                                                        onsubmit="return confirm('Удалить эту бронь из расписания?');">
-                                                        <button type="submit" class="btn-danger action-btn delete-btn"
-                                                            style="width: 100%;">Cancel Booking</button>
-                                                    </form>
-                                                    <% } %>
-                                        </div>
-                                    </div>
-                                    <% }) %>
-                            </div>
-                            <% } else { %>
-                                <div class="role-card" style="border-left-color: #ffc800;">
-                                    <p>No reservations yet.</p>
-                                </div>
-                                <% } %>
-                    </div>
 
-                    <div id="security-tab" class="tab-pane">
-                        <h3>Security & Password Settings</h3>
-                        <form action="/profile/security" method="POST" class="security-form">
-                            <div class="form-group">
-                                <label>Account Email:</label>
-                                <input type="email" value="<%= currentUser.email %>" disabled
-                                    style="background-color: #e9ecef; cursor: not-allowed;">
-                            </div>
-                            <div class="form-group">
-                                <label>New Password:</label>
-                                <input type="password" name="newPassword" placeholder="Enter new password" required>
-                            </div>
-                            <button type="submit" class="btn-primary">Update Security Settings</button>
-                        </form>
-                        <hr style="margin: 10px 0; border: none; border-top: 1px solid #dcdde1;">
-                        <div style="background: #fff5f5; border: 1px solid #ff4757; padding: 20px; border-radius: 8px;">
-                            <h4 style="margin-top: 0; color: #ff4757;">Terminate Session</h4>
-                            <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Log out of your Food Advisor
-                                account on this device.</p>
-                            <a href="/logout" class="btn-danger" style="text-decoration: none;">Log Out from Account</a>
+                                            <button type="submit" class="btn-primary"
+                                                style="margin-top: 15px; width: 100%;">Publish Restaurant</button>
+                                        </form>
                         </div>
-                    </div>
+
+                        <div id="reservations-tab"
+                            class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'reservations-tab') ? 'active' : '' %>">
+                            <h3>Restaurant Bookings</h3>
+                            <% if (typeof bookings !=='undefined' && bookings && bookings.length> 0) { %>
+                                <div class="managed-restaurants-list">
+                                    <% bookings.forEach(function(booking) { %>
+                                        <% let statusColor='#e65100' ; if (booking.status==='confirmed' )
+                                            statusColor='#2e7d32' ; else if (booking.status==='cancelled' )
+                                            statusColor='#c62828' ; %>
+                                            <div class="horizontal-restaurant-card"
+                                                style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px;">
+                                                <div class="restaurant-card-main"
+                                                    style="display: flex; align-items: flex-start; margin-bottom: 8px;">
+                                                    <div class="restaurant-card-img-wrapper"
+                                                        style="height: 65px; width: 65px; min-width: 65px; display: flex; align-items: center; justify-content: center;">
+                                                        <% if (booking.customer_avatar && booking.customer_avatar.trim()
+                                                            !=='' ) { %>
+                                                            <img src="<%= booking.customer_avatar %>"
+                                                                alt="Customer Avatar" class="horizontal-restaurant-img"
+                                                                style="height: 65px; width: 65px; border-radius: 50%; object-fit: cover;">
+                                                            <% } else { %>
+                                                                <div
+                                                                    style="height: 65px; width: 65px; border-radius: 50%; background: #e9ecef; color: #333; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.4rem;">
+                                                                    <%= booking.customer_email ?
+                                                                        booking.customer_email.charAt(0).toUpperCase() :
+                                                                        (booking.customer_name ?
+                                                                        booking.customer_name.charAt(0).toUpperCase()
+                                                                        : 'U' ) %>
+                                                                </div>
+                                                                <% } %>
+                                                    </div>
+                                                    <div class="restaurant-card-info"
+                                                        style="width: 100%; margin-left: 14px;">
+                                                        <h4 title="<%= booking.restaurant_name %>"
+                                                            style="margin: 0 0 4px 0;">
+                                                            <%= booking.restaurant_name %>
+                                                        </h4>
+                                                        <div class="managed-restaurant-details"
+                                                            style="display: flex; flex-direction: column; gap: 2px;">
+                                                            <p class="restaurant-card-field" style="margin: 0;">
+                                                                <strong>Customer:</strong>
+                                                                <span class="restaurant-card-value">
+                                                                    <%= booking.customer_name %>
+                                                                </span>
+                                                            </p>
+                                                            <p class="restaurant-card-field" style="margin: 0;">
+                                                                <strong>Date & Time:</strong>
+                                                                <span class="restaurant-card-value">
+                                                                    <%= booking.booking_date %> | <%= booking.start_time
+                                                                            %> – <%= booking.end_time %>
+                                                                </span>
+                                                            </p>
+                                                            <p class="restaurant-card-field" style="margin: 0;">
+                                                                <strong>Number of guests:</strong>
+                                                                <span class="restaurant-card-value">
+                                                                    <%= booking.guest_count %>
+                                                                </span>
+                                                            </p>
+                                                            <p class="restaurant-card-field" style="margin: 0;">
+                                                                <strong>Status:</strong>
+                                                                <span class="restaurant-card-value"
+                                                                    style="text-transform: capitalize; font-weight: bold; color: <%= statusColor %>;">
+                                                                    <%= booking.status %>
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="restaurant-card-actions"
+                                                    style="display: flex; gap: 8px; margin-top: 8px; padding-top: 0;">
+                                                    <% if (booking.status==='pending' ) { %>
+                                                        <form action="/owner/bookings/<%= booking.id %>/status"
+                                                            method="POST" style="margin: 0; flex: 1;">
+                                                            <input type="hidden" name="status" value="confirmed">
+                                                            <button type="submit" class="btn-secondary"
+                                                                style="width: 100%;">Confirm</button>
+                                                        </form>
+                                                        <form action="/owner/bookings/<%= booking.id %>/status"
+                                                            method="POST" style="margin: 0; flex: 1;">
+                                                            <input type="hidden" name="status" value="cancelled">
+                                                            <button type="submit" class="btn-danger"
+                                                                style="width: 100%;">Cancel</button>
+                                                        </form>
+                                                        <% } else { %>
+                                                            <form action="/owner/bookings/<%= booking.id %>/delete"
+                                                                method="POST" style="margin: 0; width: 100%;"
+                                                                onsubmit="return confirm('Удалить эту бронь из расписания?');">
+                                                                <button type="submit" class="btn-danger"
+                                                                    style="width: 100%;">Cancel Booking</button>
+                                                            </form>
+                                                            <% } %>
+                                                </div>
+                                            </div>
+                                            <% }); %>
+                                </div>
+                                <% } else { %>
+                                    <div class="role-card" style="border-left-color: #ffc800;">
+                                        <p>No reservations yet.</p>
+                                    </div>
+                                    <% } %>
+                        </div>
+
+                        <div id="security-tab"
+                            class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'security-tab') ? 'active' : '' %>">
+                            <h3>Security & Password Settings</h3>
+                            <form action="/profile/security" method="POST" class="security-form">
+                                <div class="form-group">
+                                    <label>Account Email:</label>
+                                    <input type="email" value="<%= currentUser.email %>" disabled
+                                        style="background-color: #e9ecef; cursor: not-allowed;">
+                                </div>
+                                <div class="form-group">
+                                    <label>New Password:</label>
+                                    <input type="password" name="newPassword" placeholder="Enter new password" required>
+                                </div>
+                                <button type="submit" class="btn-primary">Update Security Settings</button>
+                            </form>
+                            <hr style="margin: 10px 0; border: none; border-top: 1px solid #dcdde1;">
+                            <div
+                                style="background: #fff5f5; border: 1px solid #ff4757; padding: 20px; border-radius: 8px;">
+                                <h4 style="margin-top: 0; color: #ff4757;">Terminate Session</h4>
+                                <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Log out of your Food
+                                    Advisor account on this device.</p>
+                                <a href="/logout" class="btn-danger">Log Out from Account</a>
+                            </div>
+                        </div>
                 </main>
             </div>
         </div>
     </div>
 
     <script>
+        const MAX_OWNER_IMAGE_BYTES = 3 * 1024 * 1024;
+
+        const ownerAvatarFileInput = document.getElementById('avatarFileInput');
+        const ownerSelectedAvatarFileName = document.getElementById('selectedAvatarFileName');
+        const ownerAvatarError = document.getElementById('ownerAvatarError');
+        const ownerProfileForm = document.getElementById('ownerProfileForm');
+
+        function showOwnerAvatarError(message) {
+            if (!ownerAvatarError) return;
+            ownerAvatarError.textContent = message;
+            ownerAvatarError.style.display = message ? 'block' : 'none';
+        }
+
+        function validateOwnerAvatarFile(file) {
+            if (!file) return true;
+            if (file.type && !file.type.startsWith('image/')) {
+                showOwnerAvatarError('Only image files are allowed.');
+                return false;
+            }
+            if (file.size > MAX_OWNER_IMAGE_BYTES) {
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                showOwnerAvatarError(`Avatar image size (${sizeMb} MB) exceeds the 3 MB limit.`);
+                return false;
+            }
+            showOwnerAvatarError('');
+            return true;
+        }
+
+        if (ownerAvatarFileInput) {
+            ownerAvatarFileInput.addEventListener('change', () => {
+                const file = ownerAvatarFileInput.files && ownerAvatarFileInput.files[0];
+                if (!file) {
+                    if (ownerSelectedAvatarFileName) ownerSelectedAvatarFileName.textContent = '';
+                    showOwnerAvatarError('');
+                    return;
+                }
+
+                if (!validateOwnerAvatarFile(file)) {
+                    ownerAvatarFileInput.value = '';
+                    if (ownerSelectedAvatarFileName) ownerSelectedAvatarFileName.textContent = '';
+                    return;
+                }
+
+                if (ownerSelectedAvatarFileName) {
+                    const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                    ownerSelectedAvatarFileName.textContent = `Selected file: ${file.name} (${sizeMb} MB)`;
+                }
+            });
+        }
+
+        if (ownerProfileForm) {
+            ownerProfileForm.addEventListener('submit', (event) => {
+                const submitter = event.submitter;
+                if (submitter && submitter.getAttribute('formaction') === '/profile/avatar/delete') {
+                    showOwnerAvatarError('');
+                    return;
+                }
+
+                const file = ownerAvatarFileInput && ownerAvatarFileInput.files && ownerAvatarFileInput.files[0];
+                if (file && !validateOwnerAvatarFile(file)) {
+                    event.preventDefault();
+                }
+            });
+        }
+
+        const restaurantImageInput = document.getElementById('fileInput');
+        const restaurantImagePreview = document.getElementById('restaurantImagePreview');
+        const restaurantImageHint = document.getElementById('restaurantImageHint');
+        const restaurantImageWeightWarning = document.getElementById('restaurantImageWeightWarning');
+        const addRestaurantForm = document.getElementById('addRestaurantForm');
+        let restaurantImagePreviewUrl = null;
+
+        function showRestaurantImageError(message) {
+            if (restaurantImageWeightWarning) {
+                restaurantImageWeightWarning.textContent = message || '';
+                restaurantImageWeightWarning.style.display = message ? 'block' : 'none';
+            }
+        }
+
+        function resetRestaurantPreview() {
+            if (restaurantImagePreviewUrl) {
+                URL.revokeObjectURL(restaurantImagePreviewUrl);
+                restaurantImagePreviewUrl = null;
+            }
+            if (restaurantImagePreview) {
+                restaurantImagePreview.removeAttribute('src');
+                restaurantImagePreview.style.display = 'none';
+            }
+            if (restaurantImageHint) {
+                restaurantImageHint.style.display = 'block';
+            }
+        }
+
+        function validateRestaurantImageFile(file) {
+            if (!file) return true;
+            if (file.type && !file.type.startsWith('image/')) {
+                showRestaurantImageError('Only image files are allowed.');
+                return false;
+            }
+            if (file.size > MAX_OWNER_IMAGE_BYTES) {
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                showRestaurantImageError(`Restaurant image size (${sizeMb} MB) exceeds the 3 MB limit.`);
+                return false;
+            }
+            showRestaurantImageError('');
+            return true;
+        }
+
+        if (restaurantImageInput && restaurantImagePreview && restaurantImageHint) {
+            restaurantImageInput.addEventListener('change', () => {
+                const imageFile = restaurantImageInput.files && restaurantImageInput.files[0];
+                resetRestaurantPreview();
+
+                if (!imageFile) {
+                    showRestaurantImageError('');
+                    return;
+                }
+
+                if (!validateRestaurantImageFile(imageFile)) {
+                    restaurantImageInput.value = '';
+                    return;
+                }
+
+                restaurantImagePreviewUrl = URL.createObjectURL(imageFile);
+                restaurantImagePreview.src = restaurantImagePreviewUrl;
+                restaurantImagePreview.style.display = 'block';
+                restaurantImageHint.style.display = 'none';
+            });
+        }
+
+        if (addRestaurantForm) {
+            addRestaurantForm.addEventListener('submit', (event) => {
+                const imageFile = restaurantImageInput && restaurantImageInput.files && restaurantImageInput.files[0];
+                if (imageFile && !validateRestaurantImageFile(imageFile)) {
+                    event.preventDefault();
+                }
+            });
+        }
+
         const bookingBadge = document.getElementById('booking-notification-badge');
         const bookingToast = document.getElementById('booking-notification-toast');
         let previousUnreadCount = bookingBadge ? (Number(bookingBadge.textContent.trim()) || 0) : 0;
+
         if (previousUnreadCount > 0 && bookingToast) {
             bookingToast.textContent = `You have ${previousUnreadCount} new booking request(s).`;
             bookingToast.style.display = 'block';
         }
+
         function updateBookingBadge(count) {
             if (bookingBadge) {
                 bookingBadge.textContent = count;
                 bookingBadge.style.display = count > 0 ? 'inline-block' : 'none';
             }
         }
+
         async function markBookingsAsRead() {
             try {
                 const response = await fetch('/owner/bookings/read-all', { method: 'POST' });
@@ -425,6 +610,7 @@
                 console.error('Could not mark booking notifications as read:', err);
             }
         }
+
         async function checkForNewBookings() {
             try {
                 const response = await fetch('/owner/bookings/notifications');
@@ -434,7 +620,9 @@
                 if (count > previousUnreadCount && data.latest && bookingToast) {
                     bookingToast.textContent = `New booking request for ${data.latest.restaurantName} from ${data.latest.customerName}.`;
                     bookingToast.style.display = 'block';
-                    window.setTimeout(() => { bookingToast.style.display = 'none'; }, 8000);
+                    window.setTimeout(() => {
+                        bookingToast.style.display = 'none';
+                    }, 8000);
                 }
                 updateBookingBadge(count);
                 previousUnreadCount = count;
@@ -442,6 +630,7 @@
                 console.error('Could not check booking notifications:', err);
             }
         }
+
         function showTab(tabId, btn) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.profile-nav-btn').forEach(el => el.classList.remove('active'));
@@ -452,29 +641,7 @@
                 markBookingsAsRead();
             }
         }
-        const restaurantImageInput = document.getElementById('fileInput');
-        const restaurantImagePreview = document.getElementById('restaurantImagePreview');
-        const restaurantImageHint = document.getElementById('restaurantImageHint');
-        let restaurantImagePreviewUrl = null;
-        if (restaurantImageInput && restaurantImagePreview && restaurantImageHint) {
-            restaurantImageInput.addEventListener('change', () => {
-                const imageFile = restaurantImageInput.files && restaurantImageInput.files[0];
-                if (restaurantImagePreviewUrl) {
-                    URL.revokeObjectURL(restaurantImagePreviewUrl);
-                    restaurantImagePreviewUrl = null;
-                }
-                if (!imageFile || (imageFile.type && !imageFile.type.startsWith('image/'))) {
-                    restaurantImagePreview.removeAttribute('src');
-                    restaurantImagePreview.style.display = 'none';
-                    restaurantImageHint.style.display = 'block';
-                    return;
-                }
-                restaurantImagePreviewUrl = URL.createObjectURL(imageFile);
-                restaurantImagePreview.src = restaurantImagePreviewUrl;
-                restaurantImagePreview.style.display = 'block';
-                restaurantImageHint.style.display = 'none';
-            });
-        }
+
         setInterval(checkForNewBookings, 10000);
     </script>
     <%- include('partials/footer') %>
