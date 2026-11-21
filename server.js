@@ -836,6 +836,47 @@ function cleanupUploadedFile(file) {
     });
 }
 
+function validateRestaurantNameRules(rawName, options = {}) {
+    const label = options.label || 'Restaurant name';
+    const min = typeof options.min === 'number' ? options.min : 2;
+    const max = typeof options.max === 'number' ? options.max : 30;
+    const value = typeof rawName === 'string' ? rawName.trim() : '';
+
+    if (!value || value.length < min) {
+        return {
+            ok: false,
+            value,
+            error: `${label} must be at least ${min} characters long.`
+        };
+    }
+
+    if (value.length > max) {
+        return {
+            ok: false,
+            value,
+            error: `${label} must be ${max} characters or fewer.`
+        };
+    }
+
+    if (/^\d/.test(value)) {
+        return {
+            ok: false,
+            value,
+            error: `${label} cannot start with a number.`
+        };
+    }
+
+    if (!/\p{L}/u.test(value)) {
+        return {
+            ok: false,
+            value,
+            error: `${label} cannot contain only numbers or symbols.`
+        };
+    }
+
+    return { ok: true, value, error: '' };
+}
+
 app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -868,10 +909,13 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             }
 
             const [bookings] = await db.query(`
-        SELECT b.id, b.restaurant_id, b.customer_id, DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-               TIME_FORMAT(b.start_time, '%H:%i') AS start_time, TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
-               b.guest_count, b.status, b.owner_read_at, r.name AS restaurant_name,
-               u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar
+        SELECT b.id, b.restaurant_id, b.customer_id,
+               DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+               TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
+               TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
+               b.guest_count, b.status, b.owner_read_at,
+               r.name AS restaurant_name, u.username AS customer_name,
+               u.email AS customer_email, u.avatar AS customer_avatar
         FROM bookings b
         JOIN restaurants r ON r.id = b.restaurant_id
         JOIN users u ON u.id = b.customer_id
@@ -910,13 +954,22 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             return renderAddError('Image size must not exceed 3 MB.');
         }
 
-        const nameCheck = validateTextField(req.body?.name, { label: 'Restaurant name', required: true, min: 2, max: 100 });
+        const nameCheck = validateRestaurantNameRules(req.body?.name, {
+            label: 'Restaurant name',
+            min: 2,
+            max: 30
+        });
         if (!nameCheck.ok) {
             cleanupUploadedFile(req.file);
             return renderAddError(nameCheck.error);
         }
 
-        const descCheck = validateTextField(req.body?.description, { label: 'Restaurant description', required: true, min: 10, max: 1000 });
+        const descCheck = validateTextField(req.body?.description, {
+            label: 'Restaurant description',
+            required: true,
+            min: 10,
+            max: 1000
+        });
         if (!descCheck.ok) {
             cleanupUploadedFile(req.file);
             return renderAddError(descCheck.error);
@@ -930,14 +983,17 @@ app.post('/owner/restaurants/add', handleRestaurantImageUpload, async (req, res)
             cleanupUploadedFile(req.file);
             return renderAddError('Cuisine, street, and building number are required.');
         }
+
         if (!ALLOWED_CUISINES.includes(restaurantCuisine)) {
             cleanupUploadedFile(req.file);
             return renderAddError('Please choose a valid cuisine from the list.');
         }
+
         if (!ALLOWED_STREETS.includes(restaurantStreet)) {
             cleanupUploadedFile(req.file);
             return renderAddError('Please choose a valid European street from the list.');
         }
+
         if (buildingNo < 1 || buildingNo > 99) {
             cleanupUploadedFile(req.file);
             return renderAddError('Building number must be between 1 and 99.');
@@ -1051,13 +1107,22 @@ app.post('/owner/restaurants/:id/edit', handleRestaurantImageUpload, async (req,
             return renderEditError('Image size must not exceed 3 MB.');
         }
 
-        const nameCheck = validateTextField(rawName, { label: 'Restaurant name', required: true, min: 2, max: 100 });
+        const nameCheck = validateRestaurantNameRules(rawName, {
+            label: 'Restaurant name',
+            min: 2,
+            max: 30
+        });
         if (!nameCheck.ok) {
             cleanupUploadedFile(req.file);
             return renderEditError(nameCheck.error);
         }
 
-        const descCheck = validateTextField(rawDescription, { label: 'Restaurant description', required: true, min: 10, max: 1000 });
+        const descCheck = validateTextField(rawDescription, {
+            label: 'Restaurant description',
+            required: true,
+            min: 10,
+            max: 1000
+        });
         if (!descCheck.ok) {
             cleanupUploadedFile(req.file);
             return renderEditError(descCheck.error);
@@ -1761,6 +1826,110 @@ app.post('/admin/reviews/delete/:id', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
+    }
+});
+
+app.get('/admin/restaurants/edit/:id', async (req, res) => {
+    try {
+        if (!req.cookies || !req.cookies.user_email) {
+            return res.redirect('/login');
+        }
+
+        const [admins] = await db.query(
+            'SELECT id, username, email, role, avatar FROM users WHERE email = ?',
+            [req.cookies.user_email]
+        );
+        const currentUser = admins[0];
+        if (!currentUser || currentUser.role !== 'admin') {
+            return res.status(403).send('Access denied.');
+        }
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(400).send('Invalid restaurant ID.');
+        }
+
+        const [rows] = await db.query('SELECT * FROM restaurants WHERE id = ?', [restaurantId]);
+        if (rows.length === 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        return res.render('admin-edit-restaurant', {
+            currentUser,
+            restaurant: rows[0],
+            errorMessage: ''
+        });
+    } catch (err) {
+        console.error('Failed to load restaurant edit page:', err);
+        return res.status(500).send('Server error while loading edit page.');
+    }
+});
+
+app.post('/admin/restaurants/edit/:id', async (req, res) => {
+    try {
+        if (!req.cookies || !req.cookies.user_email) {
+            return res.redirect('/login');
+        }
+
+        const [admins] = await db.query(
+            'SELECT id, username, email, role, avatar FROM users WHERE email = ?',
+            [req.cookies.user_email]
+        );
+        const currentUser = admins[0];
+        if (!currentUser || currentUser.role !== 'admin') {
+            return res.status(403).send('Access denied.');
+        }
+
+        const restaurantId = Number(req.params.id);
+        if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+            return res.status(400).send('Invalid restaurant ID.');
+        }
+
+        const [rows] = await db.query('SELECT * FROM restaurants WHERE id = ?', [restaurantId]);
+        if (rows.length === 0) {
+            return res.status(404).send('Restaurant not found.');
+        }
+
+        const rawName = typeof req.body.name === 'string' ? req.body.name : '';
+        const street = typeof req.body.street === 'string' ? req.body.street.trim() : '';
+        const buildingNumber = Number(req.body.building_number);
+
+        const nameCheck = validateRestaurantNameRules(rawName, {
+            label: 'Restaurant name',
+            min: 2,
+            max: 30
+        });
+        if (!nameCheck.ok) {
+            return res.status(400).render('admin-edit-restaurant', {
+                currentUser,
+                restaurant: rows[0],
+                formName: nameCheck.value,
+                formAddress: street ? `${street}, ${req.body.building_number || ''}` : rows[0].address,
+                errorMessage: nameCheck.error
+            });
+        }
+
+        if (!ALLOWED_STREETS.includes(street) || !Number.isInteger(buildingNumber) || buildingNumber < 1 || buildingNumber > 99) {
+            return res.status(400).render('admin-edit-restaurant', {
+                currentUser,
+                restaurant: rows[0],
+                formName: nameCheck.value,
+                formAddress: rows[0].address,
+                errorMessage: 'Please select a valid street and building number (1–99).'
+            });
+        }
+
+        const updatedAddress = `${street}, ${buildingNumber}`;
+
+        await db.query(
+            'UPDATE restaurants SET name = ?, address = ? WHERE id = ?',
+            [nameCheck.value, updatedAddress, restaurantId]
+        );
+
+        return res.redirect('/admin');
+    } catch (err) {
+        console.error('Failed to update restaurant info:', err);
+        return res.status(500).send('Server error while updating restaurant.');
     }
 });
 

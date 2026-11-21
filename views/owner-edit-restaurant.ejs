@@ -7,187 +7,176 @@
                 </h2>
             </div>
 
-            <% if (errorMessage) { %>
-                <div class="form-error-banner" role="alert" style="margin-top: 16px;">
-                    <%= errorMessage %>
+            <% const initialEditError=(typeof errorMessage !=='undefined' && errorMessage) ? errorMessage : '' ; %>
+                <div id="editRestaurantFormErrorBox" class="form-error-banner" role="alert"
+                    style="display: <%= initialEditError ? 'block' : 'none' %>; margin-top: 16px;">
+                    <%= initialEditError %>
                 </div>
-                <% } %>
 
-                    <% const cuisinesList=[ 'Italian' , 'Japanese' , 'Chinese' , 'Mexican' , 'American' , 'French'
-                        , 'Indian' , 'Thai' , 'Korean' , 'Turkish' , 'Georgian' , 'Mediterranean' , 'Spanish' , 'Greek'
-                        , 'Vietnamese' , 'Middle Eastern' , 'Brazilian' , 'Seafood' , 'Steakhouse' , 'Fast Food' ];
-                        const fakeEuropeanStreets=[ 'Aethelgard Avenue' , 'Borealis Boulevard' , 'Caelum Lane'
-                        , 'Duskwood Crescent' , 'Eldoria Way' , 'Faelivor Square' , 'Glimmerfen Drive'
-                        , 'Havencrest Alley' , 'Illoria Passage' , 'Jovian Terrace' , 'Kinsale Walk' , 'LUNARIS Parkway'
-                        , 'Mirthwood Row' , 'Nebula Circle' , 'Oakhaven Loop' , 'Pendragon Close' , 'Quicksilver Strand'
-                        , 'Raventhorpe Thoroughfare' , 'Stardust Gate' , 'Zephyrion Boulevard' ]; const rawAddr=typeof
-                        restaurant.address==='string' ? restaurant.address.trim() : '' ; let parsedStreet='' ; let
-                        parsedBuilding=1; if (rawAddr) { const lowerAddr=rawAddr.toLowerCase(); const
-                        matchedStreet=fakeEuropeanStreets.find((s)=> lowerAddr.startsWith(s.toLowerCase()));
-                        if (matchedStreet) {
-                        parsedStreet = matchedStreet;
-                        const rest = rawAddr.slice(matchedStreet.length).replace(/^[,\s#]+/, '').trim();
-                        const numMatch = rest.match(/\b([1-9]|[1-9][0-9])\b/);
-                        if (numMatch) {
-                        const num = Number(numMatch[1]);
-                        if (Number.isInteger(num) && num >= 1 && num <= 99) { parsedBuilding=num; } } } } const
-                            rawCuisine=typeof restaurant.cuisine==='string' ? restaurant.cuisine.trim() : '' ; const
-                            matchedCuisine=cuisinesList.find((c)=> c.toLowerCase() === rawCuisine.toLowerCase()) ||
-                            rawCuisine;
-                            const selectedCuisine = matchedCuisine;
-                            const selectedStreet = typeof restaurant.street === 'string' && restaurant.street.trim()
-                            ? restaurant.street.trim()
-                            : parsedStreet;
-                            const selectedBuilding = restaurant.building_number != null &&
-                            Number(restaurant.building_number) >= 1 && Number(restaurant.building_number) <= 99 ?
-                                Number(restaurant.building_number) : parsedBuilding; %>
+                <% const cuisinesList=[ 'Italian' , 'Japanese' , 'Chinese' , 'Mexican' , 'American' , 'French'
+                    , 'Indian' , 'Thai' , 'Korean' , 'Turkish' , 'Georgian' , 'Mediterranean' , 'Spanish' , 'Greek'
+                    , 'Vietnamese' , 'Middle Eastern' , 'Brazilian' , 'Seafood' , 'Steakhouse' , 'Fast Food' ]; const
+                    fakeEuropeanStreets=[ 'Aethelgard Avenue' , 'Borealis Boulevard' , 'Caelum Lane'
+                    , 'Duskwood Crescent' , 'Eldoria Way' , 'Faelivor Square' , 'Glimmerfen Drive' , 'Havencrest Alley'
+                    , 'Illoria Passage' , 'Jovian Terrace' , 'Kinsale Walk' , 'LUNARIS Parkway' , 'Mirthwood Row'
+                    , 'Nebula Circle' , 'Oakhaven Loop' , 'Pendragon Close' , 'Quicksilver Strand'
+                    , 'Raventhorpe Thoroughfare' , 'Stardust Gate' , 'Zephyrion Boulevard' ]; const rawAddr=typeof
+                    restaurant.address==='string' ? restaurant.address.trim() : '' ; let parsedStreet='' ; let
+                    parsedBuilding=1; if (rawAddr) { const lowerAddr=rawAddr.toLowerCase(); const
+                    matchedStreet=fakeEuropeanStreets.find((s)=> lowerAddr.startsWith(s.toLowerCase()));
+                    if (matchedStreet) {
+                    parsedStreet = matchedStreet;
+                    const rest = rawAddr.slice(matchedStreet.length).replace(/^[,\s#]+/, '').trim();
+                    const numMatch = rest.match(/\b([1-9]|[1-9][0-9])\b/);
+                    if (numMatch) {
+                    const num = Number(numMatch[1]);
+                    if (Number.isInteger(num) && num >= 1 && num <= 99) { parsedBuilding=num; } } } } const
+                        rawCuisine=typeof restaurant.cuisine==='string' ? restaurant.cuisine.trim() : '' ; const
+                        matchedCuisine=cuisinesList.find((c)=> c.toLowerCase() === rawCuisine.toLowerCase()) ||
+                        rawCuisine;
+                        const selectedCuisine = matchedCuisine;
+                        const selectedStreet = typeof restaurant.street === 'string' && restaurant.street.trim() ?
+                        restaurant.street.trim() : parsedStreet;
+                        const selectedBuilding = restaurant.building_number != null &&
+                        Number(restaurant.building_number) >= 1 && Number(restaurant.building_number) <= 99 ?
+                            Number(restaurant.building_number) : parsedBuilding; %>
 
-                                <form id="editRestaurantForm" action="/owner/restaurants/<%= restaurant.id %>/edit"
-                                    method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
-                                    <div class="form-group" style="margin-bottom: 15px;">
-                                        <label>Restaurant Name:</label>
-                                        <input type="text" name="name" value="<%= restaurant.name %>" minlength="2"
-                                            maxlength="100" required
-                                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <form id="editRestaurantForm" action="/owner/restaurants/<%= restaurant.id %>/edit"
+                                method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label for="editRestaurantNameInput">Restaurant Name:</label>
+                                    <input type="text" id="editRestaurantNameInput" name="name"
+                                        value="<%= restaurant.name %>" minlength="2" maxlength="30" required
+                                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label>Cuisine Type:</label>
+                                    <select name="cuisine" class="form-control"
+                                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;"
+                                        required>
+                                        <% if (!selectedCuisine) { %>
+                                            <option value="" disabled selected>Select a cuisine...</option>
+                                            <% } %>
+                                                <% if (selectedCuisine && !cuisinesList.includes(selectedCuisine)) { %>
+                                                    <option value="<%= selectedCuisine %>" selected>
+                                                        <%= selectedCuisine %>
+                                                    </option>
+                                                    <% } %>
+                                                        <% cuisinesList.forEach(function(c) { %>
+                                                            <option value="<%= c %>" <%=selectedCuisine===c ? 'selected'
+                                                                : '' %>><%= c %>
+                                                            </option>
+                                                            <% }); %>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label>Address:</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <div class="form-group" style="flex: 2;">
+                                            <label>Street Name:</label>
+                                            <select name="street" required class="form-control"
+                                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;">
+                                                <% if (!selectedStreet) { %>
+                                                    <option value="" disabled selected>Select European Street</option>
+                                                    <% } %>
+                                                        <% if (selectedStreet &&
+                                                            !fakeEuropeanStreets.includes(selectedStreet)) { %>
+                                                            <option value="<%= selectedStreet %>" selected>
+                                                                <%= selectedStreet %>
+                                                            </option>
+                                                            <% } %>
+                                                                <% fakeEuropeanStreets.forEach(function(street) { %>
+                                                                    <option value="<%= street %>"
+                                                                        <%=selectedStreet===street ? 'selected' : '' %>>
+                                                                        <%= street %>
+                                                                    </option>
+                                                                    <% }); %>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group" style="flex: 1;">
+                                            <label>Building No. (1-99):</label>
+                                            <select name="building_number" required class="form-control"
+                                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;">
+                                                <% for (let i=1; i <=99; i++) { %>
+                                                    <option value="<%= i %>" <%=selectedBuilding===i ? 'selected' : ''
+                                                        %>><%= i %>
+                                                    </option>
+                                                    <% } %>
+                                            </select>
+                                        </div>
                                     </div>
+                                </div>
 
-                                    <div class="form-group" style="margin-bottom: 15px;">
-                                        <label>Cuisine Type:</label>
-                                        <select name="cuisine" class="form-control"
-                                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;"
-                                            required>
-                                            <% if (!selectedCuisine) { %>
-                                                <option value="" disabled selected>Select a cuisine...</option>
+                                <div class="form-group" style="margin-bottom: 15px;">
+                                    <label>Description:</label>
+                                    <textarea name="description" rows="4" minlength="10" maxlength="1000"
+                                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"
+                                        required><%= restaurant.description %></textarea>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 20px;">
+                                    <label>Current Image:</label>
+                                    <div style="width: 100%; text-align: center; margin-top: 8px; margin-bottom: 10px;">
+                                        <% if (restaurant.image) { %>
+                                            <img id="editRestaurantPreview" src="<%= restaurant.image %>"
+                                                alt="Restaurant Image"
+                                                style="width: 50%; max-width: 50%; height: auto; border-radius: 6px; display: block; margin: 0 auto;">
+                                            <% } else { %>
+                                                <p id="editRestaurantNoImageText"
+                                                    style="margin: 6px 0 10px; color: #666; text-align: left;">No image
+                                                    uploaded.</p>
+                                                <img id="editRestaurantPreview" src="" alt="Restaurant Image Preview"
+                                                    style="display: none; width: 50%; max-width: 50%; height: auto; border-radius: 6px; margin: 0 auto;">
                                                 <% } %>
-                                                    <% if (selectedCuisine && !cuisinesList.includes(selectedCuisine)) {
-                                                        %>
-                                                        <option value="<%= selectedCuisine %>" selected>
-                                                            <%= selectedCuisine %>
-                                                        </option>
-                                                        <% } %>
-                                                            <% cuisinesList.forEach(function(c) { %>
-                                                                <option value="<%= c %>" <%=selectedCuisine===c
-                                                                    ? 'selected' : '' %>><%= c %>
-                                                                </option>
-                                                                <% }); %>
-                                        </select>
                                     </div>
-
-                                    <div class="form-group" style="margin-bottom: 15px;">
-                                        <label>Address:</label>
-                                        <div style="display: flex; gap: 10px;">
-                                            <div class="form-group" style="flex: 2;">
-                                                <label>Street Name:</label>
-                                                <select name="street" required class="form-control"
-                                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;">
-                                                    <% if (!selectedStreet) { %>
-                                                        <option value="" disabled selected>Select European Street
-                                                        </option>
-                                                        <% } %>
-                                                            <% if (selectedStreet &&
-                                                                !fakeEuropeanStreets.includes(selectedStreet)) { %>
-                                                                <option value="<%= selectedStreet %>" selected>
-                                                                    <%= selectedStreet %>
-                                                                </option>
-                                                                <% } %>
-                                                                    <% fakeEuropeanStreets.forEach(function(street) { %>
-                                                                        <option value="<%= street %>"
-                                                                            <%=selectedStreet===street ? 'selected' : ''
-                                                                            %>><%= street %>
-                                                                        </option>
-                                                                        <% }); %>
-                                                </select>
-                                            </div>
-                                            <div class="form-group" style="flex: 1;">
-                                                <label>Building No. (1-99):</label>
-                                                <select name="building_number" required class="form-control"
-                                                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial; background-color: #fff; cursor: pointer;">
-                                                    <% for (let i=1; i <=99; i++) { %>
-                                                        <option value="<%= i %>" <%=selectedBuilding===i ? 'selected'
-                                                            : '' %>><%= i %>
-                                                        </option>
-                                                        <% } %>
-                                                </select>
-                                            </div>
-                                        </div>
+                                    <input type="file" name="imageFile" id="editImageFileInput"
+                                        accept="image/jpeg,image/png,image/webp,image/*" style="display: none;">
+                                    <small style="color: #666; display: block; margin-top: 5px;">Supported formats: JPG,
+                                        PNG, WEBP. Maximum file size: 3 MB.</small>
+                                    <span id="editSelectedFileName"
+                                        style="display: block; margin-top: 6px; font-size: 13px; color: #555;"></span>
+                                    <div id="editRestaurantImageError" role="alert"
+                                        style="display: none; background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 0.9rem; font-weight: 500;">
                                     </div>
+                                </div>
 
-                                    <div class="form-group" style="margin-bottom: 15px;">
-                                        <label>Description:</label>
-                                        <textarea name="description" rows="4" minlength="10" maxlength="1000"
-                                            style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: Arial;"
-                                            required><%= restaurant.description %></textarea>
+                                <div class="form-actions"
+                                    style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+                                    <div
+                                        style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
+                                        <button type="button" class="btn-secondary"
+                                            style="width: 100%; min-width: 0; margin: 0;"
+                                            onclick="document.getElementById('editImageFileInput').click();">
+                                            <%= restaurant.image ? 'Change Image' : 'Add Image' %>
+                                        </button>
+                                        <% if (restaurant.image) { %>
+                                            <button type="submit" form="deleteRestaurantImageForm" class="btn-danger"
+                                                style="width: 100%; min-width: 0; margin: 0;">Remove Image</button>
+                                            <% } else { %>
+                                                <button type="button" class="btn-danger"
+                                                    style="width: 100%; min-width: 0; margin: 0;" disabled>Remove
+                                                    Image</button>
+                                                <% } %>
                                     </div>
-
-                                    <div class="form-group" style="margin-bottom: 20px;">
-                                        <label>Current Image:</label>
-                                        <div
-                                            style="width: 100%; text-align: center; margin-top: 8px; margin-bottom: 10px;">
-                                            <% if (restaurant.image) { %>
-                                                <img id="editRestaurantPreview" src="<%= restaurant.image %>"
-                                                    alt="Restaurant Image"
-                                                    style="width: 50%; max-width: 50%; height: auto; border-radius: 6px; display: block; margin: 0 auto;">
-                                                <% } else { %>
-                                                    <p id="editRestaurantNoImageText"
-                                                        style="margin: 6px 0 10px; color: #666; text-align: left;">No
-                                                        image uploaded.</p>
-                                                    <img id="editRestaurantPreview" src=""
-                                                        alt="Restaurant Image Preview"
-                                                        style="display: none; width: 50%; max-width: 50%; height: auto; border-radius: 6px; margin: 0 auto;">
-                                                    <% } %>
-                                        </div>
-
-                                        <input type="file" name="imageFile" id="editImageFileInput"
-                                            accept="image/jpeg,image/png,image/webp,image/*" style="display: none;">
-                                        <small style="color: #666; display: block; margin-top: 5px;">Supported formats:
-                                            JPG, PNG, WEBP. Maximum file size: 3 MB.</small>
-                                        <span id="editSelectedFileName"
-                                            style="display: block; margin-top: 6px; font-size: 13px; color: #555;"></span>
-
-                                        <div id="editRestaurantImageError" role="alert"
-                                            style="display: none; background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 0.9rem; font-weight: 500;">
-                                        </div>
+                                    <div
+                                        style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
+                                        <button type="submit" class="btn-primary"
+                                            style="width: 100%; min-width: 0; margin: 0;">Save Changes</button>
+                                        <a href="/owner-dashboard" class="btn-secondary"
+                                            style="width: 100%; min-width: 0; margin: 0; text-align: center; text-decoration: none;">Cancel</a>
                                     </div>
+                                </div>
+                            </form>
 
-                                    <div class="form-actions"
-                                        style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
-                                        <div
-                                            style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
-                                            <button type="button" class="btn-secondary"
-                                                style="width: 100%; min-width: 0; margin: 0;"
-                                                onclick="document.getElementById('editImageFileInput').click();">
-                                                <%= restaurant.image ? 'Change Image' : 'Add Image' %>
-                                            </button>
-
-                                            <% if (restaurant.image) { %>
-                                                <button type="submit" form="deleteRestaurantImageForm"
-                                                    class="btn-danger" style="width: 100%; min-width: 0; margin: 0;">
-                                                    Remove Image
-                                                </button>
-                                                <% } else { %>
-                                                    <button type="button" class="btn-danger"
-                                                        style="width: 100%; min-width: 0; margin: 0;" disabled>
-                                                        Remove Image
-                                                    </button>
-                                                    <% } %>
-                                        </div>
-
-                                        <div
-                                            style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
-                                            <button type="submit" class="btn-primary"
-                                                style="width: 100%; min-width: 0; margin: 0;">Save Changes</button>
-                                            <a href="/owner-dashboard" class="btn-secondary"
-                                                style="width: 100%; min-width: 0; margin: 0; text-align: center; text-decoration: none;">Cancel</a>
-                                        </div>
-                                    </div>
+                            <% if (restaurant.image) { %>
+                                <form id="deleteRestaurantImageForm"
+                                    action="/owner/restaurants/<%= restaurant.id %>/delete-image" method="POST"
+                                    onsubmit="return confirm('Remove restaurant image?');" style="display: none;">
                                 </form>
-
-                                <% if (restaurant.image) { %>
-                                    <form id="deleteRestaurantImageForm"
-                                        action="/owner/restaurants/<%= restaurant.id %>/delete-image" method="POST"
-                                        onsubmit="return confirm('Remove restaurant image?');" style="display: none;">
-                                    </form>
-                                    <% } %>
+                                <% } %>
         </div>
     </div>
 
@@ -199,6 +188,31 @@
         const editRestaurantNoImageText = document.getElementById('editRestaurantNoImageText');
         const editRestaurantImageError = document.getElementById('editRestaurantImageError');
         const editRestaurantForm = document.getElementById('editRestaurantForm');
+        const editRestaurantNameInput = document.getElementById('editRestaurantNameInput');
+        const editRestaurantFormErrorBox = document.getElementById('editRestaurantFormErrorBox');
+
+        function validateEditRestaurantName(rawName) {
+            const value = (rawName || '').trim();
+            if (!value || value.length < 2) {
+                return 'Restaurant name must be at least 2 characters long.';
+            }
+            if (value.length > 30) {
+                return 'Restaurant name must be 30 characters or fewer.';
+            }
+            if (/^\d/.test(value)) {
+                return 'Restaurant name cannot start with a number.';
+            }
+            if (!/\p{L}/u.test(value)) {
+                return 'Restaurant name cannot contain only numbers or symbols.';
+            }
+            return '';
+        }
+
+        function showEditRestaurantNameError(message) {
+            if (!editRestaurantFormErrorBox) return;
+            editRestaurantFormErrorBox.textContent = message || '';
+            editRestaurantFormErrorBox.style.display = message ? 'block' : 'none';
+        }
 
         function showEditRestaurantImageError(message) {
             if (!editRestaurantImageError) return;
@@ -221,6 +235,13 @@
             return true;
         }
 
+        if (editRestaurantNameInput) {
+            editRestaurantNameInput.addEventListener('input', () => {
+                const err = validateEditRestaurantName(editRestaurantNameInput.value);
+                showEditRestaurantNameError(err);
+            });
+        }
+
         if (editImageInput) {
             editImageInput.addEventListener('change', () => {
                 const file = editImageInput.files && editImageInput.files[0];
@@ -229,13 +250,11 @@
                     showEditRestaurantImageError('');
                     return;
                 }
-
                 if (!validateEditRestaurantImageFile(file)) {
                     editImageInput.value = '';
                     if (editSelectedFileName) editSelectedFileName.textContent = '';
                     return;
                 }
-
                 showEditRestaurantImageError('');
                 if (editSelectedFileName) {
                     const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
@@ -259,9 +278,22 @@
             editRestaurantForm.addEventListener('submit', (event) => {
                 const submitter = event.submitter;
                 if (submitter && submitter.getAttribute('form') === 'deleteRestaurantImageForm') {
+                    showEditRestaurantNameError('');
                     showEditRestaurantImageError('');
                     return;
                 }
+
+                const nameErr = editRestaurantNameInput ? validateEditRestaurantName(editRestaurantNameInput.value) : '';
+                if (nameErr) {
+                    event.preventDefault();
+                    showEditRestaurantNameError(nameErr);
+                    if (editRestaurantNameInput) editRestaurantNameInput.focus();
+                    return;
+                }
+                if (editRestaurantNameInput) {
+                    editRestaurantNameInput.value = editRestaurantNameInput.value.trim();
+                }
+                showEditRestaurantNameError('');
 
                 const file = editImageInput && editImageInput.files && editImageInput.files[0];
                 if (file && !validateEditRestaurantImageFile(file)) {

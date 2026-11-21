@@ -1,0 +1,122 @@
+<%- include('partials/header') %>
+    <div class="container" style="max-width: 720px;">
+        <div class="dashboard-card-wrapper">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+                <h2 style="margin: 0;">Edit Restaurant Info</h2>
+                <a href="/admin" class="btn-secondary" style="text-decoration: none;">Back to Admin Panel</a>
+            </div>
+
+            <% const initialError=(typeof errorMessage !=='undefined' && errorMessage) ? errorMessage : '' ; %>
+                <div id="adminRestaurantNameError" class="form-error-banner" role="alert"
+                    style="display: <%= initialError ? 'block' : 'none' %>;">
+                    <%= initialError %>
+                </div>
+
+                <% const streetsList=[ 'Aethelgard Avenue' , 'Borealis Boulevard' , 'Caelum Lane' , 'Duskwood Crescent'
+                    , 'Eldoria Way' , 'Faelivor Square' , 'Glimmerfen Drive' , 'Havencrest Alley' , 'Illoria Passage'
+                    , 'Jovian Terrace' , 'Kinsale Walk' , 'LUNARIS Parkway' , 'Mirthwood Row' , 'Nebula Circle'
+                    , 'Oakhaven Loop' , 'Pendragon Close' , 'Quicksilver Strand' , 'Raventhorpe Thoroughfare'
+                    , 'Stardust Gate' , 'Zephyrion Boulevard' ]; const rawAddress=(typeof formAddress !=='undefined' &&
+                    formAddress) ? formAddress : (restaurant.address || '' ); const parts=rawAddress.split(','); const
+                    parsedStreet=parts[0] ? parts[0].trim() : '' ; const parsedBuilding=parts[1] ?
+                    parseInt(parts[1].trim(), 10) : 1; const currentName=(typeof formName !=='undefined' && formName
+                    !==null) ? formName : (restaurant.name || '' ); %>
+
+                    <form id="adminEditRestaurantForm" action="/admin/restaurants/edit/<%= restaurant.id %>"
+                        method="POST" style="margin-top: 15px;">
+                        <div class="form-group">
+                            <label for="restaurantName">Restaurant Name:</label>
+                            <input type="text" id="restaurantName" name="name" value="<%= currentName %>" required
+                                minlength="2" maxlength="30" placeholder="Enter restaurant name">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Location:</label>
+                            <div style="display: flex; gap: 10px;">
+                                <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                                    <label for="restaurantStreet">Street Name:</label>
+                                    <select id="restaurantStreet" name="street" required class="form-control">
+                                        <option value="">Select European Street</option>
+                                        <% streetsList.forEach(function(street) { %>
+                                            <option value="<%= street %>" <%=parsedStreet===street ? 'selected' : '' %>>
+                                                <%= street %>
+                                            </option>
+                                            <% }); %>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <label for="restaurantBuilding">Building No. (1-99):</label>
+                                    <select id="restaurantBuilding" name="building_number" required
+                                        class="form-control">
+                                        <% for (let i=1; i <=99; i++) { %>
+                                            <option value="<%= i %>" <%=parsedBuilding===i ? 'selected' : '' %>><%= i %>
+                                            </option>
+                                            <% } %>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-top: 20px;">
+                            <button type="submit" class="btn-primary" style="flex: 1;">Save Changes</button>
+                            <a href="/admin" class="btn-secondary"
+                                style="flex: 1; text-align: center; text-decoration: none; box-sizing: border-box;">Cancel</a>
+                        </div>
+                    </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const form = document.getElementById('adminEditRestaurantForm');
+            const nameInput = document.getElementById('restaurantName');
+            const errorBox = document.getElementById('adminRestaurantNameError');
+
+            function validateRestaurantName(rawName) {
+                const value = (rawName || '').trim();
+                if (!value || value.length < 2) {
+                    return 'Restaurant name must be at least 2 characters long.';
+                }
+                if (value.length > 30) {
+                    return 'Restaurant name must be 30 characters or fewer.';
+                }
+                if (/^\d/.test(value)) {
+                    return 'Restaurant name cannot start with a number.';
+                }
+                if (!/\p{L}/u.test(value)) {
+                    return 'Restaurant name cannot contain only numbers or symbols.';
+                }
+                return '';
+            }
+
+            function showNameError(message) {
+                if (!errorBox) return;
+                errorBox.textContent = message || '';
+                errorBox.style.display = message ? 'block' : 'none';
+            }
+
+            if (nameInput) {
+                nameInput.addEventListener('input', () => {
+                    const err = validateRestaurantName(nameInput.value);
+                    showNameError(err);
+                });
+            }
+
+            if (form && nameInput) {
+                form.addEventListener('submit', (event) => {
+                    const err = validateRestaurantName(nameInput.value);
+                    if (err) {
+                        event.preventDefault();
+                        showNameError(err);
+                        nameInput.focus();
+                        return;
+                    }
+                    nameInput.value = nameInput.value.trim();
+                    showNameError('');
+                });
+            }
+        })();
+    </script>
+    <%- include('partials/footer') %>
