@@ -1329,12 +1329,17 @@ p {
     border-radius: 6px;
     border: 1px solid #ddd;
     display: block;
+    padding: 0;
 }
 
+.restaurant-card-img-wrapper .horizontal-restaurant-img,
+.restaurant-card-img-wrapper img,
 .horizontal-restaurant-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
     display: block;
     border: none;
     border-radius: 6px;
@@ -1375,9 +1380,14 @@ p {
         max-height: 110px;
     }
 
+    .restaurant-card-img-wrapper .horizontal-restaurant-img,
+    .restaurant-card-img-wrapper img,
     .horizontal-restaurant-img {
-        width: 100%;
-        height: 100%;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
     }
 
     .restaurant-card-actions {

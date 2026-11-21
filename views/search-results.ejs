@@ -5,11 +5,12 @@
             <div class="search-page-layout">
                 <aside class="filters-sidebar">
                     <h3>Filters</h3>
-                    <form action="/search" method="GET">
+                    <form id="searchFiltersForm" action="/search" method="GET">
                         <div class="form-group">
                             <label>Restaurant Name</label>
                             <input type="text" name="query" value="<%= searchQuery %>" placeholder="Name...">
                         </div>
+
                         <div class="form-group">
                             <label>Cuisine / Style</label>
                             <select name="cuisine">
@@ -24,6 +25,7 @@
                                         <% }) %>
                             </select>
                         </div>
+
                         <div class="form-group">
                             <label>Location (Street)</label>
                             <select name="location">
@@ -41,6 +43,7 @@
                                         <% }) %>
                             </select>
                         </div>
+
                         <div class="form-group">
                             <label>Minimum Rating</label>
                             <select name="min_rating">
@@ -51,17 +54,24 @@
                                     selectedMinRating==='4.5' ) ? 'selected' : '' %>>4.5 & above</option>
                             </select>
                         </div>
+
                         <div class="form-group">
                             <label>Avg. Dish Price ($)</label>
                             <div style="display: flex; gap: 8px;">
-                                <input type="number" name="min_price"
+                                <input type="number" id="minPriceInput" name="min_price"
                                     value="<%= typeof selectedMinPrice !== 'undefined' ? selectedMinPrice : '' %>"
                                     placeholder="Min" min="0" step="1" class="form-control" style="width: 50%;">
-                                <input type="number" name="max_price"
+                                <input type="number" id="maxPriceInput" name="max_price"
                                     value="<%= typeof selectedMaxPrice !== 'undefined' ? selectedMaxPrice : '' %>"
                                     placeholder="Max" min="0" step="1" class="form-control" style="width: 50%;">
                             </div>
+                            <% const initialPriceError=typeof priceError !=='undefined' ? priceError : '' ; %>
+                                <div id="priceRangeError" role="alert"
+                                    style="display: <%= initialPriceError ? 'block' : 'none' %>; margin-top: 8px; padding: 8px 10px; border-radius: 6px; background-color: #ffebee; border: 1px solid #ef9a9a; color: #c62828; font-size: 0.85rem; font-weight: 500;">
+                                    <%= initialPriceError %>
+                                </div>
                         </div>
+
                         <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Apply
                             Filters</button>
                     </form>
@@ -78,7 +88,6 @@
                                         <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ?
                                             Number(r.rating).toFixed(1) : 'New' %> / 5.0
                                     </div>
-
                                     <div class="restaurant-card-main">
                                         <div class="restaurant-card-info" style="padding-right: 75px;">
                                             <h4 title="<%= r.name %>">
@@ -107,7 +116,6 @@
                                                 </p>
                                             </div>
                                         </div>
-
                                         <div class="restaurant-card-img-wrapper">
                                             <% if (r.image && r.image.trim() !=='' ) { %>
                                                 <img src="<%= r.image %>" alt="<%= r.name %>"
@@ -128,4 +136,66 @@
             </div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            const form = document.getElementById('searchFiltersForm');
+            const minInput = document.getElementById('minPriceInput');
+            const maxInput = document.getElementById('maxPriceInput');
+            const errorBox = document.getElementById('priceRangeError');
+
+            if (!form || !minInput || !maxInput || !errorBox) return;
+
+            function setPriceError(message) {
+                errorBox.textContent = message || '';
+                errorBox.style.display = message ? 'block' : 'none';
+            }
+
+            function validatePriceRange(changedField) {
+                const minRaw = minInput.value.trim();
+                const maxRaw = maxInput.value.trim();
+
+                if (minRaw !== '' && Number(minRaw) < 0) {
+                    setPriceError('Minimum price cannot be negative.');
+                    return false;
+                }
+                if (maxRaw !== '' && Number(maxRaw) < 0) {
+                    setPriceError('Maximum price cannot be negative.');
+                    return false;
+                }
+
+                if (minRaw !== '' && maxRaw !== '') {
+                    const minVal = Number(minRaw);
+                    const maxVal = Number(maxRaw);
+
+                    if (minVal >= maxVal) {
+                        if (changedField === 'max') {
+                            setPriceError('Maximum price must be greater than minimum price.');
+                        } else if (changedField === 'min') {
+                            setPriceError('Minimum price must be less than maximum price.');
+                        } else {
+                            setPriceError('Minimum price must be less than maximum price.');
+                        }
+                        return false;
+                    }
+                }
+
+                setPriceError('');
+                return true;
+            }
+
+            minInput.addEventListener('input', () => validatePriceRange('min'));
+            maxInput.addEventListener('input', () => validatePriceRange('max'));
+
+            form.addEventListener('submit', (event) => {
+                if (!validatePriceRange()) {
+                    event.preventDefault();
+                    if (minInput.value.trim() !== '' && maxInput.value.trim() !== '' && Number(minInput.value) >= Number(maxInput.value)) {
+                        maxInput.focus();
+                    }
+                }
+            });
+        })();
+    </script>
+
     <%- include('partials/footer') %>

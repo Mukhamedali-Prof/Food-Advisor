@@ -405,8 +405,23 @@ app.get('/search', async (req, res) => {
         const selectedCuisine = typeof req.query.cuisine === 'string' ? req.query.cuisine.trim() : '';
         const selectedLocation = typeof req.query.location === 'string' ? req.query.location.trim() : '';
         const selectedMinRating = typeof req.query.min_rating === 'string' ? req.query.min_rating.trim() : '';
-        const selectedMinPrice = typeof req.query.min_price === 'string' ? req.query.min_price.trim() : '';
-        const selectedMaxPrice = typeof req.query.max_price === 'string' ? req.query.max_price.trim() : '';
+        let selectedMinPrice = typeof req.query.min_price === 'string' ? req.query.min_price.trim() : '';
+        let selectedMaxPrice = typeof req.query.max_price === 'string' ? req.query.max_price.trim() : '';
+
+        let priceError = '';
+        const parsedMin = selectedMinPrice !== '' ? parseFloat(selectedMinPrice) : null;
+        const parsedMax = selectedMaxPrice !== '' ? parseFloat(selectedMaxPrice) : null;
+
+        if ((parsedMin !== null && (Number.isNaN(parsedMin) || parsedMin < 0)) ||
+            (parsedMax !== null && (Number.isNaN(parsedMax) || parsedMax < 0))) {
+            priceError = 'Price values must be non-negative numbers.';
+            selectedMinPrice = '';
+            selectedMaxPrice = '';
+        } else if (parsedMin !== null && parsedMax !== null && parsedMin >= parsedMax) {
+            priceError = 'Minimum price must be less than maximum price.';
+            selectedMinPrice = '';
+            selectedMaxPrice = '';
+        }
 
         const conditions = ['(r.is_hidden = 0 OR r.is_hidden IS NULL)'];
         const params = [];
@@ -416,17 +431,14 @@ app.get('/search', async (req, res) => {
             const term = `%${rawQuery}%`;
             params.push(term, term, term);
         }
-
         if (selectedCuisine) {
             conditions.push('r.cuisine = ?');
             params.push(selectedCuisine);
         }
-
         if (selectedLocation) {
             conditions.push('r.address LIKE ?');
             params.push(`${selectedLocation},%`);
         }
-
         if (selectedMinRating) {
             conditions.push('r.rating >= ?');
             params.push(parseFloat(selectedMinRating));
@@ -443,12 +455,12 @@ app.get('/search', async (req, res) => {
         }
 
         let query = `
-            SELECT r.*, AVG(m.price) AS avg_price
-            FROM restaurants r
-            LEFT JOIN menu_items m ON r.id = m.restaurant_id
-            WHERE ${conditions.join(' AND ')}
-            GROUP BY r.id
-        `;
+      SELECT r.*, AVG(m.price) AS avg_price
+      FROM restaurants r
+      LEFT JOIN menu_items m ON r.id = m.restaurant_id
+      WHERE ${conditions.join(' AND ')}
+      GROUP BY r.id
+    `;
 
         if (havingConditions.length > 0) {
             query += ` HAVING ${havingConditions.join(' AND ')}`;
@@ -457,10 +469,9 @@ app.get('/search', async (req, res) => {
         query += ` ORDER BY r.created_at DESC, r.id DESC`;
 
         const [restaurants] = await db.query(query, params);
-
         const [cuisines] = await db.query(`
-            SELECT DISTINCT cuisine FROM restaurants WHERE is_hidden = 0 OR is_hidden IS NULL ORDER BY cuisine ASC
-        `);
+      SELECT DISTINCT cuisine FROM restaurants WHERE is_hidden = 0 OR is_hidden IS NULL ORDER BY cuisine ASC
+    `);
 
         let currentUser = null;
         if (req.cookies.user_email) {
@@ -480,6 +491,7 @@ app.get('/search', async (req, res) => {
             selectedMinRating,
             selectedMinPrice,
             selectedMaxPrice,
+            priceError,
             currentUser
         });
     } catch (err) {
