@@ -16,7 +16,6 @@
                 <% } %>
 
                     <% const hasFailedUpdate=typeof failedUpdateItem !=='undefined' && failedUpdateItem !==null; %>
-
                         <% if (errorMessage && !hasFailedUpdate) { %>
                             <div class="form-error-banner" role="alert">
                                 <%= errorMessage %>
@@ -25,10 +24,11 @@
 
                                 <% const addDraft=typeof addMenuItemData !=='undefined' && addMenuItemData !==null ?
                                     addMenuItemData : null; %>
-
                                     <section class="favorite-item" style="margin: 20px 0;">
                                         <h3>Add Menu Item</h3>
-                                        <form action="/owner/restaurants/<%= restaurant.id %>/menu/add" method="POST">
+                                        <form id="addMenuItemForm"
+                                            action="/owner/restaurants/<%= restaurant.id %>/menu/add" method="POST"
+                                            enctype="multipart/form-data">
                                             <div class="form-group">
                                                 <label>Item name:</label>
                                                 <input type="text" name="name"
@@ -46,6 +46,26 @@
                                                     value="<%= addDraft ? addDraft.price : '' %>" min="0"
                                                     max="99999999.99" step="0.01" required>
                                             </div>
+                                            <div class="form-group">
+                                                <label>Dish Image (optional):</label>
+                                                <div class="restaurant-upload-dropzone" style="text-align: center;">
+                                                    <input type="file" name="imageFile"
+                                                        accept="image/jpeg,image/png,image/webp,image/*"
+                                                        id="addMenuItemImageInput" style="display: none;">
+                                                    <img id="addMenuItemImagePreview" class="restaurant-upload-preview"
+                                                        alt="Selected dish image preview"
+                                                        style="display: none; width: auto; height: auto; max-width: 240px; max-height: 240px; object-fit: contain; border-radius: 6px; margin: 0 auto 12px auto;">
+                                                    <button type="button" class="btn-secondary"
+                                                        onclick="document.getElementById('addMenuItemImageInput').click();">Choose
+                                                        photo</button>
+                                                    <p id="addMenuItemImageHint" class="restaurant-upload-hint">Image
+                                                        preview will appear here. Supported formats: JPG, PNG, WEBP (max
+                                                        3 MB).</p>
+                                                    <p id="addMenuItemImageError" role="alert"
+                                                        style="display: none; margin: 8px 0 0 0; padding: 10px 12px; border-radius: 6px; background-color: #ffebee; border: 1px solid #ef9a9a; color: #c62828; font-size: 0.9rem; font-weight: 500;">
+                                                    </p>
+                                                </div>
+                                            </div>
                                             <button type="submit" class="btn-primary">Add Item</button>
                                         </form>
                                     </section>
@@ -57,51 +77,353 @@
                                                 <% const draft=(hasFailedUpdate &&
                                                     Number(failedUpdateItem.itemId)===Number(item.id)) ?
                                                     failedUpdateItem : null; %>
-                                                    <article class="favorite-item" style="margin: 14px 0;">
-                                                        <% if (draft && errorMessage) { %>
-                                                            <div class="form-error-banner" role="alert"
-                                                                style="margin-bottom: 10px;">
-                                                                <%= errorMessage %>
-                                                            </div>
-                                                            <% } %>
-                                                                <form
-                                                                    action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/update"
-                                                                    method="POST">
-                                                                    <div class="form-group">
-                                                                        <label>Item name:</label>
-                                                                        <input type="text" name="name"
-                                                                            value="<%= draft ? draft.name : item.name %>"
-                                                                            minlength="2" maxlength="100" required>
-                                                                    </div>
-                                                                    <div class="form-group">
-                                                                        <label>Description (optional):</label>
-                                                                        <textarea name="description" maxlength="500"
-                                                                            rows="3"><%= draft ? draft.description : (item.description || '') %></textarea>
-                                                                    </div>
-                                                                    <div class="form-group">
-                                                                        <label>Price:</label>
-                                                                        <input type="number" name="price"
-                                                                            value="<%= draft ? draft.price : Number(item.price).toFixed(2) %>"
-                                                                            min="0" max="99999999.99" step="0.01"
-                                                                            required>
-                                                                    </div>
-                                                                    <button type="submit" class="btn-primary">Save
-                                                                        Changes</button>
-                                                                </form>
-                                                                <form
-                                                                    action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/delete"
-                                                                    method="POST" style="margin-top: 8px;"
-                                                                    onsubmit="return confirm('Delete this menu item?');">
-                                                                    <button type="submit" class="btn-secondary"
-                                                                        style="border-color: #c62828; color: #c62828;">Delete
-                                                                        Item</button>
-                                                                </form>
-                                                    </article>
-                                                    <% }); %>
-                                                        <% } else { %>
-                                                            <p>No menu items yet. Add the first item above.</p>
-                                                            <% } %>
+                                                    <% const itemImage=item.image || item.image_url || '' ; %>
+                                                        <article class="favorite-item" style="margin: 14px 0;">
+                                                            <% if (draft && errorMessage) { %>
+                                                                <div class="form-error-banner" role="alert"
+                                                                    style="margin-bottom: 10px;">
+                                                                    <%= errorMessage %>
+                                                                </div>
+                                                                <% } %>
+
+                                                                    <form class="edit-menu-item-form"
+                                                                        data-item-id="<%= item.id %>"
+                                                                        action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/update"
+                                                                        method="POST" enctype="multipart/form-data">
+                                                                        <input type="hidden" name="removeImage"
+                                                                            id="removeMenuItemImageInput-<%= item.id %>"
+                                                                            value="0">
+
+                                                                        <div class="form-group">
+                                                                            <label>Item name:</label>
+                                                                            <input type="text" name="name"
+                                                                                value="<%= draft ? draft.name : item.name %>"
+                                                                                minlength="2" maxlength="100" required>
+                                                                        </div>
+
+                                                                        <div class="form-group">
+                                                                            <label>Description (optional):</label>
+                                                                            <textarea name="description" maxlength="500"
+                                                                                rows="3"><%= draft ? draft.description : (item.description || '') %></textarea>
+                                                                        </div>
+
+                                                                        <div class="form-group">
+                                                                            <label>Price:</label>
+                                                                            <input type="number" name="price"
+                                                                                value="<%= draft ? draft.price : Number(item.price).toFixed(2) %>"
+                                                                                min="0" max="99999999.99" step="0.01"
+                                                                                required>
+                                                                        </div>
+
+                                                                        <div class="form-group"
+                                                                            style="margin-bottom: 16px;">
+                                                                            <label>Dish Image:</label>
+                                                                            <div
+                                                                                style="width: 100%; text-align: center; margin-top: 8px; margin-bottom: 10px;">
+                                                                                <% if (itemImage) { %>
+                                                                                    <img id="editMenuItemPreview-<%= item.id %>"
+                                                                                        data-original-src="<%= itemImage %>"
+                                                                                        src="<%= itemImage %>"
+                                                                                        alt="<%= item.name %>"
+                                                                                        style="width: auto; height: auto; max-width: 240px; max-height: 240px; object-fit: contain; border-radius: 6px; display: block; margin: 0 auto;">
+                                                                                    <p id="editMenuItemNoImageText-<%= item.id %>"
+                                                                                        style="display: none; margin: 6px 0 10px; color: #666; text-align: left;">
+                                                                                        No image uploaded.</p>
+                                                                                    <% } else { %>
+                                                                                        <p id="editMenuItemNoImageText-<%= item.id %>"
+                                                                                            style="margin: 6px 0 10px; color: #666; text-align: left;">
+                                                                                            No image uploaded.</p>
+                                                                                        <img id="editMenuItemPreview-<%= item.id %>"
+                                                                                            data-original-src="" src=""
+                                                                                            alt="<%= item.name %> preview"
+                                                                                            style="display: none; width: auto; height: auto; max-width: 240px; max-height: 240px; object-fit: contain; border-radius: 6px; margin: 0 auto;">
+                                                                                        <% } %>
+                                                                            </div>
+
+                                                                            <input type="file" name="imageFile"
+                                                                                id="editMenuItemImageInput-<%= item.id %>"
+                                                                                accept="image/jpeg,image/png,image/webp,image/*"
+                                                                                style="display: none;">
+                                                                            <small
+                                                                                style="color: #666; display: block; margin-top: 5px;">Supported
+                                                                                formats: JPG, PNG, WEBP. Maximum file
+                                                                                size: 3 MB.</small>
+                                                                            <span
+                                                                                id="editMenuItemFileName-<%= item.id %>"
+                                                                                style="display: block; margin-top: 6px; font-size: 13px; color: #555;"></span>
+
+                                                                            <div id="editMenuItemImageError-<%= item.id %>"
+                                                                                role="alert"
+                                                                                style="display: none; background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 0.9rem; font-weight: 500;">
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div
+                                                                            style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                                                                            <div
+                                                                                style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
+                                                                                <button type="button"
+                                                                                    class="btn-secondary"
+                                                                                    onclick="document.getElementById('editMenuItemImageInput-<%= item.id %>').click();">
+                                                                                    <%= itemImage ? 'Change Image'
+                                                                                        : 'Add Image' %>
+                                                                                </button>
+
+                                                                                <button type="button"
+                                                                                    id="removeMenuItemImageBtn-<%= item.id %>"
+                                                                                    class="btn-danger"
+                                                                                    onclick="markMenuItemImageForRemoval('<%= item.id %>');"
+                                                                                    <%=itemImage ? '' : 'disabled' %>
+                                                                                    >Remove Image</button>
+                                                                            </div>
+
+                                                                            <div
+                                                                                style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%;">
+                                                                                <button type="submit"
+                                                                                    class="btn-primary">Save
+                                                                                    Changes</button>
+                                                                                <button type="button"
+                                                                                    class="btn-secondary"
+                                                                                    onclick="resetMenuItemEditForm('<%= item.id %>');">Cancel</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </form>
+
+                                                                    <form
+                                                                        action="/owner/restaurants/<%= restaurant.id %>/menu/<%= item.id %>/delete"
+                                                                        method="POST" style="margin-top: 10px;"
+                                                                        onsubmit="return confirm('Delete this menu item?');">
+                                                                        <button type="submit" class="btn-danger">Delete
+                                                                            Item</button>
+                                                                    </form>
+                                                        </article>
+                                                        <% }); %>
+                                                            <% } else { %>
+                                                                <p>No menu items yet. Add the first item above.</p>
+                                                                <% } %>
                                     </section>
         </div>
     </div>
+
+    <script>
+        const MAX_MENU_IMAGE_BYTES = 3 * 1024 * 1024;
+        const MAX_MENU_IMAGE_DISPLAY_PX = 240;
+
+        function applyMenuImageSizeLimit(imgEl) {
+            if (!imgEl) return;
+            imgEl.style.width = 'auto';
+            imgEl.style.height = 'auto';
+            imgEl.style.maxWidth = `${MAX_MENU_IMAGE_DISPLAY_PX}px`;
+            imgEl.style.maxHeight = `${MAX_MENU_IMAGE_DISPLAY_PX}px`;
+            imgEl.style.objectFit = 'contain';
+            imgEl.style.marginLeft = 'auto';
+            imgEl.style.marginRight = 'auto';
+        }
+
+        document.querySelectorAll('#addMenuItemImagePreview, [id^="editMenuItemPreview-"]').forEach((imgEl) => {
+            applyMenuImageSizeLimit(imgEl);
+        });
+
+        function showMenuImageError(errorEl, message) {
+            if (!errorEl) return;
+            errorEl.textContent = message || '';
+            errorEl.style.display = message ? 'block' : 'none';
+        }
+
+        function validateMenuImageFile(file, errorEl) {
+            if (!file) return true;
+            if (file.type && !file.type.startsWith('image/')) {
+                showMenuImageError(errorEl, 'Only image files are allowed.');
+                return false;
+            }
+            if (file.size > MAX_MENU_IMAGE_BYTES) {
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                showMenuImageError(errorEl, `Dish image size (${sizeMb} MB) exceeds the 3 MB limit.`);
+                return false;
+            }
+            showMenuImageError(errorEl, '');
+            return true;
+        }
+
+        const addMenuItemForm = document.getElementById('addMenuItemForm');
+        const addMenuItemImageInput = document.getElementById('addMenuItemImageInput');
+        const addMenuItemImagePreview = document.getElementById('addMenuItemImagePreview');
+        const addMenuItemImageHint = document.getElementById('addMenuItemImageHint');
+        const addMenuItemImageError = document.getElementById('addMenuItemImageError');
+        let addMenuItemPreviewUrl = null;
+
+        function resetAddMenuItemPreview() {
+            if (addMenuItemPreviewUrl) {
+                URL.revokeObjectURL(addMenuItemPreviewUrl);
+                addMenuItemPreviewUrl = null;
+            }
+            if (addMenuItemImagePreview) {
+                addMenuItemImagePreview.removeAttribute('src');
+                addMenuItemImagePreview.style.display = 'none';
+            }
+            if (addMenuItemImageHint) {
+                addMenuItemImageHint.style.display = 'block';
+            }
+        }
+
+        if (addMenuItemImageInput) {
+            addMenuItemImageInput.addEventListener('change', () => {
+                const file = addMenuItemImageInput.files && addMenuItemImageInput.files[0];
+                resetAddMenuItemPreview();
+
+                if (!file) {
+                    showMenuImageError(addMenuItemImageError, '');
+                    return;
+                }
+
+                if (!validateMenuImageFile(file, addMenuItemImageError)) {
+                    addMenuItemImageInput.value = '';
+                    return;
+                }
+
+                addMenuItemPreviewUrl = URL.createObjectURL(file);
+                if (addMenuItemImagePreview) {
+                    applyMenuImageSizeLimit(addMenuItemImagePreview);
+                    addMenuItemImagePreview.src = addMenuItemPreviewUrl;
+                    addMenuItemImagePreview.style.display = 'block';
+                }
+                if (addMenuItemImageHint) {
+                    addMenuItemImageHint.style.display = 'none';
+                }
+            });
+        }
+
+        if (addMenuItemForm) {
+            addMenuItemForm.addEventListener('submit', (event) => {
+                const file = addMenuItemImageInput && addMenuItemImageInput.files && addMenuItemImageInput.files[0];
+                if (file && !validateMenuImageFile(file, addMenuItemImageError)) {
+                    event.preventDefault();
+                }
+            });
+        }
+
+        function markMenuItemImageForRemoval(itemId) {
+            const removeInput = document.getElementById(`removeMenuItemImageInput-${itemId}`);
+            const fileInput = document.getElementById(`editMenuItemImageInput-${itemId}`);
+            const fileNameEl = document.getElementById(`editMenuItemFileName-${itemId}`);
+            const previewEl = document.getElementById(`editMenuItemPreview-${itemId}`);
+            const noImgText = document.getElementById(`editMenuItemNoImageText-${itemId}`);
+            const errorEl = document.getElementById(`editMenuItemImageError-${itemId}`);
+            const removeBtn = document.getElementById(`removeMenuItemImageBtn-${itemId}`);
+
+            if (removeInput) removeInput.value = '1';
+            if (fileInput) fileInput.value = '';
+            if (fileNameEl) fileNameEl.textContent = 'Image will be removed upon saving.';
+            showMenuImageError(errorEl, '');
+
+            if (previewEl) {
+                previewEl.removeAttribute('src');
+                previewEl.style.display = 'none';
+            }
+            if (noImgText) {
+                noImgText.style.display = 'block';
+            }
+            if (removeBtn) {
+                removeBtn.disabled = true;
+            }
+        }
+
+        function resetMenuItemEditForm(itemId) {
+            const form = document.querySelector(`.edit-menu-item-form[data-item-id="${itemId}"]`);
+            if (form) form.reset();
+
+            const removeInput = document.getElementById(`removeMenuItemImageInput-${itemId}`);
+            const fileInput = document.getElementById(`editMenuItemImageInput-${itemId}`);
+            const fileNameEl = document.getElementById(`editMenuItemFileName-${itemId}`);
+            const previewEl = document.getElementById(`editMenuItemPreview-${itemId}`);
+            const noImgText = document.getElementById(`editMenuItemNoImageText-${itemId}`);
+            const errorEl = document.getElementById(`editMenuItemImageError-${itemId}`);
+            const removeBtn = document.getElementById(`removeMenuItemImageBtn-${itemId}`);
+
+            if (removeInput) removeInput.value = '0';
+            if (fileInput) fileInput.value = '';
+            if (fileNameEl) fileNameEl.textContent = '';
+            showMenuImageError(errorEl, '');
+
+            const originalSrc = previewEl ? (previewEl.getAttribute('data-original-src') || '') : '';
+            if (originalSrc) {
+                if (previewEl) {
+                    applyMenuImageSizeLimit(previewEl);
+                    previewEl.src = originalSrc;
+                    previewEl.style.display = 'block';
+                }
+                if (noImgText) {
+                    noImgText.style.display = 'none';
+                }
+                if (removeBtn) {
+                    removeBtn.disabled = false;
+                }
+            } else {
+                if (previewEl) {
+                    previewEl.removeAttribute('src');
+                    previewEl.style.display = 'none';
+                }
+                if (noImgText) {
+                    noImgText.style.display = 'block';
+                }
+                if (removeBtn) {
+                    removeBtn.disabled = true;
+                }
+            }
+        }
+
+        document.querySelectorAll('.edit-menu-item-form').forEach((form) => {
+            const itemId = form.getAttribute('data-item-id');
+            const fileInput = document.getElementById(`editMenuItemImageInput-${itemId}`);
+            const fileNameEl = document.getElementById(`editMenuItemFileName-${itemId}`);
+            const previewEl = document.getElementById(`editMenuItemPreview-${itemId}`);
+            const noImgText = document.getElementById(`editMenuItemNoImageText-${itemId}`);
+            const removeInput = document.getElementById(`removeMenuItemImageInput-${itemId}`);
+            const errorEl = document.getElementById(`editMenuItemImageError-${itemId}`);
+            const removeBtn = document.getElementById(`removeMenuItemImageBtn-${itemId}`);
+
+            if (fileInput) {
+                fileInput.addEventListener('change', () => {
+                    const file = fileInput.files && fileInput.files[0];
+                    if (!file) {
+                        if (fileNameEl) fileNameEl.textContent = '';
+                        showMenuImageError(errorEl, '');
+                        return;
+                    }
+
+                    if (!validateMenuImageFile(file, errorEl)) {
+                        fileInput.value = '';
+                        if (fileNameEl) fileNameEl.textContent = '';
+                        return;
+                    }
+
+                    if (removeInput) removeInput.value = '0';
+                    if (removeBtn) removeBtn.disabled = false;
+                    if (fileNameEl) {
+                        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                        fileNameEl.textContent = `Selected file: ${file.name} (${sizeMb} MB)`;
+                    }
+                    if (noImgText) {
+                        noImgText.style.display = 'none';
+                    }
+                    if (previewEl) {
+                        applyMenuImageSizeLimit(previewEl);
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            previewEl.src = e.target.result;
+                            previewEl.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            form.addEventListener('submit', (event) => {
+                const file = fileInput && fileInput.files && fileInput.files[0];
+                if (file && !validateMenuImageFile(file, errorEl)) {
+                    event.preventDefault();
+                }
+            });
+        });
+    </script>
     <%- include('partials/footer') %>

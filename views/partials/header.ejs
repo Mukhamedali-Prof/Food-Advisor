@@ -13,12 +13,10 @@
         <div class="nav-brand">
             <a href="/">Food Advisor</a>
         </div>
-
         <form action="/search" method="GET" class="header-search-form">
             <input type="text" name="query" placeholder="Quick search restaurants..." required>
             <button type="submit" class="header-search-btn">🔍</button>
         </form>
-
         <nav class="nav-links">
             <a href="/search">All Restaurants</a>
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
@@ -28,30 +26,32 @@
                     <% } %>
                         <% } %>
         </nav>
-
         <div class="auth-links">
             <% if (typeof currentUser !=='undefined' && currentUser) { %>
                 <% const profileLink=(currentUser.role==='owner' ) ? '/owner-dashboard' : (currentUser.role==='admin'
-                    ? '/admin' : '/profile' ); const hasAvatar=currentUser.avatar && currentUser.avatar.trim() !=='' &&
-                    currentUser.avatar !=='null' ; const fallbackLetter=currentUser.email ?
-                    currentUser.email.charAt(0).toUpperCase() : (currentUser.username ?
-                    currentUser.username.charAt(0).toUpperCase() : 'U' ); const
-                    adminAvatarStyle=(currentUser.role==='admin' ) ? 'background-color: #3742fa; color: #ffffff;' : '' ;
-                    %>
-                    <a href="<%= profileLink %>" class="user-avatar-link" title="Go to Profile">
-                        <% if (hasAvatar) { %>
-                            <img src="<%= currentUser.avatar %>" alt="<%= currentUser.username %>" class="user-avatar">
-                            <% } else { %>
-                                <div class="user-avatar-letter" style="<%= adminAvatarStyle %>">
-                                    <%= fallbackLetter %>
-                                </div>
-                                <% } %>
-                    </a>
-                    <% } else { %>
-                        <button type="button" class="btn-secondary" onclick="openModal('loginModal')">Login</button>
-                        <button type="button" class="btn-primary" onclick="openModal('registerModal')">Register
-                            Now</button>
-                        <% } %>
+                    ? '/admin' : '/profile' ); %>
+                    <% const hasAvatar=currentUser.avatar && currentUser.avatar.trim() !=='' && currentUser.avatar
+                        !=='null' ; %>
+                        <% const fallbackLetter=currentUser.email ? currentUser.email.charAt(0).toUpperCase() :
+                            (currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'U' ); %>
+                            <% const adminAvatarStyle=(currentUser.role==='admin' )
+                                ? 'background-color: #3742fa; color: #ffffff;' : '' ; %>
+                                <a href="<%= profileLink %>" class="user-avatar-link" title="Go to Profile">
+                                    <% if (hasAvatar) { %>
+                                        <img src="<%= currentUser.avatar %>" alt="<%= currentUser.username %>"
+                                            class="user-avatar">
+                                        <% } else { %>
+                                            <div class="user-avatar-letter" style="<%= adminAvatarStyle %>">
+                                                <%= fallbackLetter %>
+                                            </div>
+                                            <% } %>
+                                </a>
+                                <% } else { %>
+                                    <button type="button" class="btn-secondary"
+                                        onclick="openModal('loginModal')">Login</button>
+                                    <button type="button" class="btn-primary"
+                                        onclick="openModal('registerModal')">Register Now</button>
+                                    <% } %>
         </div>
     </header>
 
@@ -84,21 +84,21 @@
     <% const serverRegisterError=(typeof registerError !=='undefined' && registerError) ? registerError : '' ; %>
         <% const serverRegisterData=(typeof registerFormData !=='undefined' && registerFormData) ? registerFormData :
             {}; %>
-
             <div id="registerModal" class="modal-overlay <%= serverRegisterError ? 'active' : '' %>">
                 <div class="modal-content">
                     <button type="button" class="modal-close" onclick="closeModal('registerModal')">&times;</button>
                     <h2>Create a New Account</h2>
                     <p>Join Food Advisor to discover restaurants and share reviews.</p>
-                    <div id="registerError" class="form-error"
-                        style="<%= serverRegisterError ? 'display: block;' : '' %>">
+                    <div id="registerError" class="form-error" role="alert"
+                        style="background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.9rem; font-weight: 500; <%= serverRegisterError ? 'display: block;' : 'display: none;' %>">
                         <%= serverRegisterError %>
                     </div>
-                    <form action="/register" method="POST">
+                    <form id="registerForm" action="/register" method="POST">
                         <div class="form-group">
                             <label>Username:</label>
                             <input type="text" name="username" id="registerUsernameInput"
-                                value="<%= serverRegisterData.username || '' %>" required placeholder="Your name">
+                                value="<%= serverRegisterData.username || '' %>" required maxlength="30"
+                                placeholder="Your name (up to 30 chars, starts with a letter)">
                         </div>
                         <div class="form-group">
                             <label>Email Address:</label>
@@ -131,6 +131,26 @@
             </div>
 
             <script>
+                function validateUsernameRule(rawUsername) {
+                    const value = (rawUsername || '').trim();
+                    if (!value) {
+                        return 'Username is required.';
+                    }
+                    if (value.length > 30) {
+                        return 'Username must be 30 characters or fewer.';
+                    }
+                    if (!/^[\p{L}]/u.test(value)) {
+                        return 'Username cannot start with a number or symbol.';
+                    }
+                    return '';
+                }
+
+                function showFormError(errorEl, message) {
+                    if (!errorEl) return;
+                    errorEl.textContent = message || '';
+                    errorEl.style.display = message ? 'block' : 'none';
+                }
+
                 function openModal(modalId) {
                     const modal = document.getElementById(modalId);
                     if (modal) modal.classList.add('active');
@@ -153,6 +173,31 @@
                 };
 
                 window.addEventListener('DOMContentLoaded', () => {
+                    const registerForm = document.getElementById('registerForm');
+                    const registerUsernameInput = document.getElementById('registerUsernameInput');
+                    const registerErrorEl = document.getElementById('registerError');
+
+                    if (registerForm && registerUsernameInput) {
+                        registerUsernameInput.addEventListener('input', () => {
+                            if (registerErrorEl && registerErrorEl.style.display === 'block') {
+                                const err = validateUsernameRule(registerUsernameInput.value);
+                                showFormError(registerErrorEl, err);
+                            }
+                        });
+
+                        registerForm.addEventListener('submit', (event) => {
+                            const err = validateUsernameRule(registerUsernameInput.value);
+                            if (err) {
+                                event.preventDefault();
+                                showFormError(registerErrorEl, err);
+                                registerUsernameInput.focus();
+                            } else {
+                                registerUsernameInput.value = registerUsernameInput.value.trim();
+                                showFormError(registerErrorEl, '');
+                            }
+                        });
+                    }
+
                     const urlParams = new URLSearchParams(window.location.search);
                     const modal = urlParams.get('modal');
                     const error = urlParams.get('error');
@@ -160,9 +205,8 @@
                     const email = urlParams.get('email');
                     const role = urlParams.get('role');
 
-                    if (username !== null) {
-                        const usernameInput = document.getElementById('registerUsernameInput');
-                        if (usernameInput) usernameInput.value = username;
+                    if (username !== null && registerUsernameInput) {
+                        registerUsernameInput.value = username;
                     }
                     if (email !== null) {
                         const emailInput = document.getElementById('registerEmailInput');
@@ -174,14 +218,12 @@
                             roleSelect.value = role;
                         }
                     }
-
                     if (modal) {
                         openModal(modal + 'Modal');
                         if (error) {
                             const errorDiv = document.getElementById(modal + 'Error');
                             if (errorDiv) {
-                                errorDiv.textContent = error;
-                                errorDiv.style.display = 'block';
+                                showFormError(errorDiv, error);
                             }
                         }
                     }

@@ -20,7 +20,6 @@
                                         <%= currentUser.role %>
                                     </span>
                     </div>
-
                     <nav class="profile-nav">
                         <button type="button"
                             class="profile-nav-btn <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>"
@@ -49,14 +48,12 @@
                             <div id="profile-tab"
                                 class="tab-pane <%= (typeof activeTab !== 'undefined' && activeTab === 'profile-tab') ? 'active' : '' %>">
                                 <h3>My Profile Details</h3>
-
                                 <% if (serverProfileSuccess) { %>
                                     <div
                                         style="background-color: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; padding: 10px 12px; border-radius: 6px; margin-top: 14px; font-size: 0.9rem;">
                                         <%= serverProfileSuccess %>
                                     </div>
                                     <% } %>
-
                                         <div id="customerAvatarError" role="alert"
                                             style="display: <%= serverProfileError ? 'block' : 'none' %>; background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; padding: 10px 12px; border-radius: 6px; margin-top: 14px; font-size: 0.9rem; font-weight: 500;">
                                             <%= serverProfileError %>
@@ -66,10 +63,9 @@
                                             enctype="multipart/form-data" style="margin-top: 20px;">
                                             <div class="form-group">
                                                 <label>Display Name:</label>
-                                                <input type="text" name="username" value="<%= currentUser.username %>"
-                                                    required>
+                                                <input type="text" name="username" id="customerUsernameInput"
+                                                    value="<%= currentUser.username %>" required maxlength="30">
                                             </div>
-
                                             <div class="form-group">
                                                 <label>Avatar:</label>
                                                 <input type="file" name="avatarFile" id="customerAvatarFileInput"
@@ -80,7 +76,6 @@
                                                 <span id="customerSelectedAvatarFileName"
                                                     style="display: block; margin-top: 6px; font-size: 0.9rem; color: #555;"></span>
                                             </div>
-
                                             <div
                                                 style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
                                                 <div style="display: flex; gap: 12px; width: 100%;">
@@ -89,17 +84,14 @@
                                                         <%= (currentUser.avatar && currentUser.avatar.trim() !=='' )
                                                             ? 'Change Avatar' : 'Upload Avatar' %>
                                                     </button>
-
                                                     <% if (currentUser.avatar && currentUser.avatar.trim() !=='' ) { %>
                                                         <button type="submit" formaction="/profile/avatar/delete"
                                                             formmethod="POST" formnovalidate class="btn-danger"
                                                             style="flex: 1;"
-                                                            onclick="return confirm('Are you sure you want to delete your profile photo?');">
-                                                            Delete Avatar
-                                                        </button>
+                                                            onclick="return confirm('Are you sure you want to delete your profile photo?');">Delete
+                                                            Avatar</button>
                                                         <% } %>
                                                 </div>
-
                                                 <button type="submit" class="btn-primary" style="width: 100%;">Save
                                                     Profile Changes</button>
                                             </div>
@@ -343,7 +335,6 @@
                                                                 </span>
                                                             </p>
                                                         </div>
-
                                                         <form id="edit-booking-form-<%= b.id %>"
                                                             action="/profile/bookings/edit/<%= b.id %>?tab=reservations"
                                                             method="POST"
@@ -467,6 +458,21 @@
         const customerSelectedAvatarFileName = document.getElementById('customerSelectedAvatarFileName');
         const customerAvatarError = document.getElementById('customerAvatarError');
         const customerProfileForm = document.getElementById('customerProfileForm');
+        const customerUsernameInput = document.getElementById('customerUsernameInput');
+
+        function validateCustomerUsernameRule(rawUsername) {
+            const value = (rawUsername || '').trim();
+            if (!value) {
+                return 'Username is required.';
+            }
+            if (value.length > 30) {
+                return 'Username must be 30 characters or fewer.';
+            }
+            if (!/^[\p{L}]/u.test(value)) {
+                return 'Username cannot start with a number or symbol.';
+            }
+            return '';
+        }
 
         function showCustomerAvatarError(message) {
             if (!customerAvatarError) return;
@@ -489,6 +495,15 @@
             return true;
         }
 
+        if (customerUsernameInput) {
+            customerUsernameInput.addEventListener('input', () => {
+                if (customerAvatarError && customerAvatarError.style.display === 'block') {
+                    const err = validateCustomerUsernameRule(customerUsernameInput.value);
+                    showCustomerAvatarError(err);
+                }
+            });
+        }
+
         if (customerAvatarFileInput) {
             customerAvatarFileInput.addEventListener('change', () => {
                 const file = customerAvatarFileInput.files && customerAvatarFileInput.files[0];
@@ -497,13 +512,11 @@
                     showCustomerAvatarError('');
                     return;
                 }
-
                 if (!validateCustomerAvatarFile(file)) {
                     customerAvatarFileInput.value = '';
                     if (customerSelectedAvatarFileName) customerSelectedAvatarFileName.textContent = '';
                     return;
                 }
-
                 if (customerSelectedAvatarFileName) {
                     const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
                     customerSelectedAvatarFileName.textContent = `Selected file: ${file.name} (${sizeMb} MB)`;
@@ -517,6 +530,18 @@
                 if (submitter && submitter.getAttribute('formaction') === '/profile/avatar/delete') {
                     showCustomerAvatarError('');
                     return;
+                }
+
+                const usernameErr = customerUsernameInput ? validateCustomerUsernameRule(customerUsernameInput.value) : '';
+                if (usernameErr) {
+                    event.preventDefault();
+                    showCustomerAvatarError(usernameErr);
+                    if (customerUsernameInput) customerUsernameInput.focus();
+                    return;
+                }
+
+                if (customerUsernameInput) {
+                    customerUsernameInput.value = customerUsernameInput.value.trim();
                 }
 
                 const file = customerAvatarFileInput && customerAvatarFileInput.files && customerAvatarFileInput.files[0];

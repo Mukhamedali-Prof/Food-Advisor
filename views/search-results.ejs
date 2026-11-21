@@ -1,9 +1,7 @@
 <%- include('partials/header') %>
-
     <div class="container">
         <div class="dashboard-card-wrapper">
             <h2>Restaurants</h2>
-
             <div class="search-page-layout">
                 <aside class="filters-sidebar">
                     <h3>Filters</h3>
@@ -12,7 +10,6 @@
                             <label>Restaurant Name</label>
                             <input type="text" name="query" value="<%= searchQuery %>" placeholder="Name...">
                         </div>
-
                         <div class="form-group">
                             <label>Cuisine / Style</label>
                             <select name="cuisine">
@@ -27,7 +24,6 @@
                                         <% }) %>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label>Location (Street)</label>
                             <select name="location">
@@ -45,18 +41,16 @@
                                         <% }) %>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label>Minimum Rating</label>
                             <select name="min_rating">
                                 <option value="">Any Rating</option>
                                 <option value="4.0" <%=(typeof selectedMinRating !=='undefined' &&
-                                    selectedMinRating==='4.0' ) ? 'selected' : '' %>>⭐ 4.0 & above</option>
+                                    selectedMinRating==='4.0' ) ? 'selected' : '' %>>4.0 & above</option>
                                 <option value="4.5" <%=(typeof selectedMinRating !=='undefined' &&
-                                    selectedMinRating==='4.5' ) ? 'selected' : '' %>>⭐ 4.5 & above</option>
+                                    selectedMinRating==='4.5' ) ? 'selected' : '' %>>4.5 & above</option>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label>Avg. Dish Price ($)</label>
                             <div style="display: flex; gap: 8px;">
@@ -68,7 +62,6 @@
                                     placeholder="Max" min="0" step="1" class="form-control" style="width: 50%;">
                             </div>
                         </div>
-
                         <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Apply
                             Filters</button>
                     </form>
@@ -79,60 +72,52 @@
                         <div class="managed-restaurants-list">
                             <% restaurants.forEach(r=> { %>
                                 <div class="horizontal-restaurant-card"
-                                    onclick="window.location.href='/restaurant/<%= r.id %>'"
-                                    style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; cursor: pointer;">
-
+                                    onclick="window.location.href='/restaurant/<%= r.id %>'" style="cursor: pointer;">
                                     <div
-                                        style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
-                                        ⭐ <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ?
+                                        style="position: absolute; top: 14px; right: 18px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
+                                        <%= (r.rating !==null && r.rating !==undefined && r.rating !=='' ) ?
                                             Number(r.rating).toFixed(1) : 'New' %> / 5.0
                                     </div>
 
-                                    <div class="restaurant-card-main"
-                                        style="display: flex; align-items: flex-start; margin-bottom: 0;">
-                                        <div class="restaurant-card-img-wrapper"
-                                            style="height: 95px; width: 95px; min-width: 95px;">
-                                            <% if (r.image && r.image.trim() !=='' ) { %>
-                                                <img src="<%= r.image %>" alt="<%= r.name %>"
-                                                    class="horizontal-restaurant-img"
-                                                    style="height: 95px; width: 95px; object-fit: cover;">
-                                                <% } else { %>
-                                                    <img src="/images/No%20image.png" alt="No image"
-                                                        class="horizontal-restaurant-img"
-                                                        style="height: 95px; width: 95px; object-fit: cover;">
-                                                    <% } %>
-                                        </div>
-
-                                        <div class="restaurant-card-info"
-                                            style="width: 100%; margin-left: 12px; padding-right: 70px;">
-                                            <h4 title="<%= r.name %>" style="margin: 0 0 4px 0;">
+                                    <div class="restaurant-card-main">
+                                        <div class="restaurant-card-info" style="padding-right: 75px;">
+                                            <h4 title="<%= r.name %>">
                                                 <%= r.name %>
                                             </h4>
-
                                             <div class="managed-restaurant-details"
-                                                style="display: flex; flex-direction: column; gap: 2px;">
+                                                style="display: flex; flex-direction: column; gap: 3px;">
                                                 <p class="restaurant-card-field" style="margin: 0;">
-                                                    <strong>Cuisine:</strong> <span class="restaurant-card-value"
-                                                        title="<%= r.cuisine %>">
+                                                    <strong>Cuisine:</strong>
+                                                    <span class="restaurant-card-value" title="<%= r.cuisine %>">
                                                         <%= r.cuisine %>
                                                     </span>
                                                 </p>
                                                 <p class="restaurant-card-field" style="margin: 0;">
-                                                    <strong>Address:</strong> <span class="restaurant-card-value"
-                                                        title="<%= r.address %>">
+                                                    <strong>Address:</strong>
+                                                    <span class="restaurant-card-value" title="<%= r.address %>">
                                                         <%= r.address %>
                                                     </span>
                                                 </p>
                                                 <p class="restaurant-description" style="margin: 0;">
-                                                    <strong>Description:</strong> <span class="restaurant-card-value"
+                                                    <strong>Description:</strong>
+                                                    <span class="restaurant-card-value"
                                                         title="<%= r.description || '' %>">
                                                         <%= r.description || 'No description provided yet.' %>
                                                     </span>
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
 
+                                        <div class="restaurant-card-img-wrapper">
+                                            <% if (r.image && r.image.trim() !=='' ) { %>
+                                                <img src="<%= r.image %>" alt="<%= r.name %>"
+                                                    class="horizontal-restaurant-img">
+                                                <% } else { %>
+                                                    <img src="/images/No%20image.png" alt="No image"
+                                                        class="horizontal-restaurant-img">
+                                                    <% } %>
+                                        </div>
+                                    </div>
                                 </div>
                                 <% }) %>
                         </div>
@@ -143,5 +128,4 @@
             </div>
         </div>
     </div>
-
     <%- include('partials/footer') %>

@@ -20,28 +20,30 @@
                     <div class="managed-restaurants-list">
                         <% topRestaurants.forEach(rest=> { %>
                             <div class="horizontal-restaurant-card"
-                                onclick="window.location.href='/restaurant/<%= rest.id %>'"
-                                style="position: relative; height: auto !important; min-height: 0 !important; margin-bottom: 15px; padding: 12px 15px; cursor: pointer;">
+                                onclick="window.location.href='/restaurant/<%= rest.id %>'" style="cursor: pointer;">
                                 <div
-                                    style="position: absolute; top: 12px; right: 15px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
-                                    ⭐ <%= (rest.rating !==null && rest.rating !==undefined && rest.rating !=='' ) ?
+                                    style="position: absolute; top: 14px; right: 18px; font-size: 0.9rem; font-weight: bold; background: #fff8e1; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffe082;">
+                                    <%= (rest.rating !==null && rest.rating !==undefined && rest.rating !=='' ) ?
                                         Number(rest.rating).toFixed(1) : 'New' %> / 5.0
                                 </div>
-                                <div class="restaurant-card-main"
-                                    style="display: flex; align-items: flex-start; margin-bottom: 0;">
-                                    <div class="restaurant-card-img-wrapper"
-                                        style="height: 95px; width: 95px; min-width: 95px;">
-                                        <img src="<%= rest.image ? rest.image : '/images/No%20image.png' %>"
-                                            alt="<%= rest.name %>" class="horizontal-restaurant-img"
-                                            style="height: 95px; width: 95px; object-fit: cover;">
+
+                                <div class="restaurant-card-main">
+                                    <div class="restaurant-card-img-wrapper">
+                                        <% if (rest.image && rest.image.trim() !=='' ) { %>
+                                            <img src="<%= rest.image %>" alt="<%= rest.name %>"
+                                                class="horizontal-restaurant-img">
+                                            <% } else { %>
+                                                <img src="/images/No%20image.png" alt="No image"
+                                                    class="horizontal-restaurant-img">
+                                                <% } %>
                                     </div>
-                                    <div class="restaurant-card-info"
-                                        style="width: 100%; margin-left: 12px; padding-right: 70px;">
-                                        <h4 title="<%= rest.name %>" style="margin: 0 0 4px 0;">
+
+                                    <div class="restaurant-card-info" style="padding-right: 75px;">
+                                        <h4 title="<%= rest.name %>">
                                             <%= rest.name %>
                                         </h4>
                                         <div class="managed-restaurant-details"
-                                            style="display: flex; flex-direction: column; gap: 2px;">
+                                            style="display: flex; flex-direction: column; gap: 3px;">
                                             <p class="restaurant-card-field" style="margin: 0;">
                                                 <strong>Cuisine:</strong>
                                                 <span class="restaurant-card-value" title="<%= rest.cuisine %>">
@@ -79,43 +81,53 @@
                 <% if (typeof recentReviews !=='undefined' && recentReviews && recentReviews.length> 0) { %>
                     <div class="reviews-list" style="display: flex; flex-direction: column; gap: 12px;">
                         <% recentReviews.forEach(rev=> { %>
-                            <div class="review-card"
-                                style="padding: 14px 16px; border: 1px solid #e1e4e8; border-radius: 8px; background: #fff;">
-                                <div class="review-meta"
-                                    style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
-                                    <div>
-                                        <strong style="color: #2f3640;">
-                                            <%= rev.username %>
-                                        </strong>
-                                        <span style="color: #718093; font-size: 0.9rem;">reviewed</span>
-                                        <% if (rev.restaurant_id) { %>
-                                            <a href="/restaurant/<%= rev.restaurant_id %>"
-                                                style="font-weight: 600; color: #e67e22; text-decoration: none;">
-                                                <%= rev.restaurant_name %>
-                                            </a>
-                                            <% } else { %>
-                                                <strong style="color: #2f3640;">
-                                                    <%= rev.restaurant_name %>
-                                                </strong>
-                                                <% } %>
-                                                    <% if (rev.created_at) { %>
-                                                        <div
-                                                            style="font-size: 0.8rem; color: #8c98a4; margin-top: 2px;">
-                                                            <%= new Date(rev.created_at).toLocaleDateString('en-US', {
-                                                                month: 'short' , day: 'numeric' , year: 'numeric' }) %>
-                                                        </div>
-                                                        <% } %>
+                            <% const rawAvatar=rev.avatar || rev.user_avatar || rev.profile_image || rev.image || '' ;
+                                %>
+                                <% const avatarSrc=(typeof rawAvatar==='string' && rawAvatar.trim() !=='' ) ? rawAvatar
+                                    : '/images/No%20image.png' ; %>
+                                    <div class="review-card"
+                                        style="padding: 14px 16px; border: 1px solid #e1e4e8; border-radius: 8px; background: #fff; display: flex; align-items: flex-start; gap: 14px;">
+                                        <img src="<%= avatarSrc %>" alt="<%= rev.username %>"
+                                            style="width: 80px; height: 80px; min-width: 80px; max-width: 80px; min-height: 80px; max-height: 80px; flex-shrink: 0; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; display: block;">
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div class="review-meta"
+                                                style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+                                                <div>
+                                                    <strong style="color: #2f3640;">
+                                                        <%= rev.username %>
+                                                    </strong>
+                                                    <span style="color: #718093; font-size: 0.9rem;">reviewed</span>
+                                                    <% if (rev.restaurant_id) { %>
+                                                        <a href="/restaurant/<%= rev.restaurant_id %>"
+                                                            style="font-weight: 600; color: #e67e22; text-decoration: none;">
+                                                            <%= rev.restaurant_name %>
+                                                        </a>
+                                                        <% } else { %>
+                                                            <strong style="color: #2f3640;">
+                                                                <%= rev.restaurant_name %>
+                                                            </strong>
+                                                            <% } %>
+                                                                <% if (rev.created_at) { %>
+                                                                    <div
+                                                                        style="font-size: 0.8rem; color: #8c98a4; margin-top: 2px;">
+                                                                        <%= new
+                                                                            Date(rev.created_at).toLocaleDateString('en-US',
+                                                                            { month: 'short' , day: 'numeric' ,
+                                                                            year: 'numeric' }) %>
+                                                                    </div>
+                                                                    <% } %>
+                                                </div>
+                                                <span class="review-rating"
+                                                    style="white-space: nowrap; font-size: 0.85rem; font-weight: bold; background: #fff8e1; padding: 3px 8px; border-radius: 6px; border: 1px solid #ffe082;">
+                                                    <%= Number(rev.rating).toFixed(1) %> / 5.0
+                                                </span>
+                                            </div>
+                                            <p class="review-comment"
+                                                style="margin: 0; color: #353b48; line-height: 1.45; font-size: 0.95rem;">
+                                                “<%= rev.comment %>”</p>
+                                        </div>
                                     </div>
-                                    <span class="review-rating"
-                                        style="white-space: nowrap; font-size: 0.85rem; font-weight: bold; background: #fff8e1; padding: 3px 8px; border-radius: 6px; border: 1px solid #ffe082;">
-                                        ⭐ <%= Number(rev.rating).toFixed(1) %> / 5.0
-                                    </span>
-                                </div>
-                                <p class="review-comment"
-                                    style="margin: 0; color: #353b48; line-height: 1.45; font-size: 0.95rem;">“<%=
-                                        rev.comment %>”</p>
-                            </div>
-                            <% }) %>
+                                    <% }) %>
                     </div>
                     <% } else { %>
                         <p style="color: #718093;">No reviews yet. Be the first to share your experience!</p>

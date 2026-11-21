@@ -367,21 +367,30 @@ app.get('/', async (req, res) => {
         }
 
         const [stats] = await db.query(`
-            SELECT 
-                (SELECT COUNT(*) FROM restaurants) as restaurantsCount,
-                (SELECT COUNT(*) FROM users) as usersCount,
-                (SELECT COUNT(*) FROM reviews) as reviewsCount
-        `);
-        const [topRestaurants] = await db.query('SELECT * FROM restaurants WHERE (is_hidden = 0 OR is_hidden IS NULL) ORDER BY rating DESC LIMIT 3');
+      SELECT
+        (SELECT COUNT(*) FROM restaurants) as restaurantsCount,
+        (SELECT COUNT(*) FROM users) as usersCount,
+        (SELECT COUNT(*) FROM reviews) as reviewsCount
+    `);
+
+        const [topRestaurants] = await db.query(
+            'SELECT * FROM restaurants WHERE (is_hidden = 0 OR is_hidden IS NULL) ORDER BY rating DESC LIMIT 3'
+        );
+
         const [recentReviews] = await db.query(`
-            SELECT reviews.*, users.username, restaurants.name as restaurant_name 
-            FROM reviews 
-            JOIN users ON reviews.user_id = users.id 
-            JOIN restaurants ON reviews.restaurant_id = restaurants.id 
-            WHERE (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL)
-              AND (restaurants.is_hidden = 0 OR restaurants.is_hidden IS NULL)
-            ORDER BY reviews.id DESC LIMIT 3
-        `);
+      SELECT
+        reviews.*,
+        users.username,
+        users.*,
+        restaurants.name as restaurant_name
+      FROM reviews
+      JOIN users ON reviews.user_id = users.id
+      JOIN restaurants ON reviews.restaurant_id = restaurants.id
+      WHERE (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL)
+        AND (restaurants.is_hidden = 0 OR restaurants.is_hidden IS NULL)
+      ORDER BY reviews.id DESC
+      LIMIT 3
+    `);
 
         res.render('index', { currentUser, stats: stats[0], topRestaurants, recentReviews });
     } catch (err) {
@@ -535,12 +544,12 @@ app.get('/restaurant/:id', async (req, res) => {
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
 
         const [reviews] = await db.query(`
-            SELECT reviews.*, users.username 
-            FROM reviews 
-            JOIN users ON reviews.user_id = users.id 
-            WHERE reviews.restaurant_id = ? AND (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL) 
-            ORDER BY reviews.id DESC
-        `, [restaurantId]);
+      SELECT reviews.*, users.username, users.avatar AS user_avatar
+      FROM reviews
+      JOIN users ON reviews.user_id = users.id
+      WHERE reviews.restaurant_id = ? AND (reviews.is_hidden = 0 OR reviews.is_hidden IS NULL)
+      ORDER BY reviews.id DESC
+    `, [restaurantId]);
 
         const [menuItems] = await db.query(
             'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
@@ -557,7 +566,6 @@ app.get('/restaurant/:id', async (req, res) => {
             );
             if (users.length > 0) {
                 currentUser = users[0];
-
                 if (currentUser.role === 'customer') {
                     const [favCheck] = await db.query(
                         'SELECT * FROM favorites WHERE user_id = ? AND restaurant_id = ?',
@@ -660,24 +668,27 @@ app.post('/register', async (req, res) => {
         if (!rawUsername || !rawEmail || !password) {
             return buildRegisterErrorRedirect('All fields are required.');
         }
+        if (rawUsername.length > 30) {
+            return buildRegisterErrorRedirect('Username must be 30 characters or fewer.');
+        }
+        if (!/^[\p{L}]/u.test(rawUsername)) {
+            return buildRegisterErrorRedirect('Username cannot start with a number or symbol.');
+        }
 
         const [existingUsers] = await db.query(
             'SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1',
             [rawEmail]
         );
-
         if (Array.isArray(existingUsers) && existingUsers.length > 0) {
             return buildRegisterErrorRedirect('A user with this email already exists.');
         }
 
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-
         await db.query(
             'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
             [rawUsername, rawEmail, hashedPassword, userRole]
         );
-
         return res.redirect('/?modal=login');
     } catch (err) {
         if (
@@ -689,7 +700,6 @@ app.post('/register', async (req, res) => {
         ) {
             return buildRegisterErrorRedirect('A user with this email already exists.');
         }
-
         console.error('Registration failed:', err);
         return buildRegisterErrorRedirect('Server error during registration. Please try again.');
     }
@@ -701,26 +711,19 @@ app.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-
         if (users.length > 0) {
             const user = users[0];
-
             if (user.is_blocked) {
                 return res.redirect('/?modal=login&error=' + encodeURIComponent('Your account has been blocked'));
             }
-
             const isPasswordValid = await bcrypt.compare(password, user.password);
-
             if (isPasswordValid) {
                 res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
-
                 if (user.role === 'owner') return res.redirect('/owner-dashboard');
                 return res.redirect('/profile');
             }
         }
-
         res.redirect('/?modal=login&error=' + encodeURIComponent('Invalid email or password!'));
-
     } catch (err) {
         console.error('Login error:', err);
         res.redirect('/?modal=login&error=' + encodeURIComponent('Server error during login'));
@@ -746,28 +749,38 @@ app.get('/owner-dashboard', requireRole('owner'), async (req, res) => {
         }
 
         const [bookings] = await db.query(`
-            SELECT b.id, b.restaurant_id, b.customer_id,
-                   DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-                   TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
-                   TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
-                   b.guest_count, b.status, b.owner_read_at,
-                   r.name AS restaurant_name,
-                   u.username AS customer_name, u.email AS customer_email, u.avatar AS customer_avatar
-            FROM bookings b
-            JOIN restaurants r ON r.id = b.restaurant_id
-            JOIN users u ON u.id = b.customer_id
-            WHERE r.owner_id = ?
-            ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
-        `, [currentUser.id]);
+      SELECT
+        b.id,
+        b.restaurant_id,
+        b.customer_id,
+        DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+        TIME_FORMAT(b.start_time, '%H:%i') AS start_time,
+        TIME_FORMAT(b.end_time, '%H:%i') AS end_time,
+        b.guest_count,
+        b.status,
+        b.owner_read_at,
+        r.name AS restaurant_name,
+        u.username AS customer_name,
+        u.email AS customer_email,
+        u.avatar AS customer_avatar
+      FROM bookings b
+      JOIN restaurants r ON r.id = b.restaurant_id
+      JOIN users u ON u.id = b.customer_id
+      WHERE r.owner_id = ?
+      ORDER BY b.booking_date DESC, b.start_time DESC, b.id DESC
+    `, [currentUser.id]);
 
         const [unreadRows] = await db.query(`
-            SELECT COUNT(*) AS unread_count
-            FROM bookings b
-            JOIN restaurants r ON r.id = b.restaurant_id
-            WHERE r.owner_id = ? AND b.status = 'pending'
-        `, [currentUser.id]);
+      SELECT COUNT(*) AS unread_count
+      FROM bookings b
+      JOIN restaurants r ON r.id = b.restaurant_id
+      WHERE r.owner_id = ? AND b.status = 'pending'
+    `, [currentUser.id]);
 
         const activeTab = req.query.tab === 'reservations' ? 'reservations-tab' : 'profile-tab';
+        const profileError = typeof req.query.profileError === 'string' && req.query.profileError
+            ? req.query.profileError
+            : (typeof req.query.error === 'string' ? req.query.error : '');
 
         return res.render('owner-profile', {
             currentUser,
@@ -777,6 +790,7 @@ app.get('/owner-dashboard', requireRole('owner'), async (req, res) => {
             activeTab,
             stats: { restaurantsCount: myRestaurants.length },
             errorMessage: null,
+            profileError,
             addFormData: null
         });
     } catch (err) {
@@ -1135,6 +1149,51 @@ app.post('/owner/restaurants/:id/delete-image', async (req, res) => {
     }
 });
 
+const MAX_MENU_IMAGE_SIZE_BYTES =
+    typeof MAX_IMAGE_SIZE_BYTES !== 'undefined' ? MAX_IMAGE_SIZE_BYTES : 3 * 1024 * 1024;
+
+const runMenuImageUpload = (req, res) =>
+    new Promise((resolve) => {
+        const uploadHandler =
+            typeof handleRestaurantImageUpload === 'function'
+                ? handleRestaurantImageUpload
+                : typeof handleImageUpload === 'function'
+                    ? handleImageUpload
+                    : null;
+
+        if (!uploadHandler) {
+            return resolve({ ok: true });
+        }
+
+        uploadHandler(req, res, (err) => {
+            if (!err) {
+                return resolve({ ok: true });
+            }
+            if (err.code === 'LIMIT_FILE_SIZE' || err.message === 'FILE_TOO_LARGE') {
+                return resolve({ ok: false, error: 'Dish image size exceeds the 3 MB limit.' });
+            }
+            if (err.message === 'INVALID_FILE_TYPE' || /image/i.test(err.message || '')) {
+                return resolve({ ok: false, error: 'Only image files are allowed.' });
+            }
+            return resolve({ ok: false, error: err.message || 'Failed to upload dish image.' });
+        });
+    });
+
+const normalizeMenuImagePath = (file) => {
+    if (!file) return null;
+    if (file.publicUrl) return file.publicUrl;
+    if (file.path && String(file.path).startsWith('/')) return file.path;
+    if (file.filename) return `/uploads/${file.filename}`;
+    return null;
+};
+
+const cleanupMenuUploadedFile = (file) => {
+    if (!file) return;
+    if (typeof cleanupUploadedFile === 'function') {
+        cleanupUploadedFile(file);
+    }
+};
+
 app.get('/owner/restaurants/:id/menu', async (req, res) => {
     try {
         const owner = await getOwnerFromRequest(req);
@@ -1193,11 +1252,15 @@ app.post('/owner/restaurants/:restaurantId/menu/add', async (req, res) => {
         );
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
 
+        const uploadResult = await runMenuImageUpload(req, res);
+        const uploadedFile = req.file || null;
+
         const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
         const rawDescription = typeof req.body?.description === 'string' ? req.body.description : '';
         const rawPrice = typeof req.body?.price === 'string' ? req.body.price : '';
 
         const renderMenuError = async (message) => {
+            cleanupMenuUploadedFile(uploadedFile);
             const [menuItems] = await db.query(
                 'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
                 [restaurantId]
@@ -1209,13 +1272,17 @@ app.post('/owner/restaurants/:restaurantId/menu/add', async (req, res) => {
                 statusMessage: null,
                 errorMessage: message,
                 failedUpdateItem: null,
-                addMenuItemData: {
-                    name: rawName,
-                    description: rawDescription,
-                    price: rawPrice
-                }
+                addMenuItemData: { name: rawName, description: rawDescription, price: rawPrice }
             });
         };
+
+        if (!uploadResult.ok) {
+            return renderMenuError(uploadResult.error);
+        }
+
+        if (uploadedFile && typeof uploadedFile.size === 'number' && uploadedFile.size > MAX_MENU_IMAGE_SIZE_BYTES) {
+            return renderMenuError('Dish image size exceeds the 3 MB limit.');
+        }
 
         const nameCheck = validateTextField(rawName, { label: 'Dish name', required: true, min: 2, max: 100 });
         if (!nameCheck.ok) {
@@ -1237,10 +1304,24 @@ app.post('/owner/restaurants/:restaurantId/menu/add', async (req, res) => {
             return renderMenuError('Price is outside the allowed range.');
         }
 
-        await db.query(
-            'INSERT INTO menu_items (restaurant_id, name, description, price) VALUES (?, ?, ?, ?)',
-            [restaurantId, nameCheck.value, descCheck.value || null, price]
-        );
+        const imagePath = normalizeMenuImagePath(uploadedFile);
+
+        try {
+            await db.query(
+                'INSERT INTO menu_items (restaurant_id, name, description, price, image) VALUES (?, ?, ?, ?, ?)',
+                [restaurantId, nameCheck.value, descCheck.value || null, price, imagePath]
+            );
+        } catch (dbErr) {
+            if (/Unknown column 'image'/i.test(dbErr.message || '')) {
+                await db.query(
+                    'INSERT INTO menu_items (restaurant_id, name, description, price, image_url) VALUES (?, ?, ?, ?, ?)',
+                    [restaurantId, nameCheck.value, descCheck.value || null, price, imagePath]
+                );
+            } else {
+                cleanupMenuUploadedFile(uploadedFile);
+                throw dbErr;
+            }
+        }
 
         return res.redirect(`/owner/restaurants/${restaurantId}/menu?status=added`);
     } catch (err) {
@@ -1266,11 +1347,16 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/update', async (req, res
         );
         if (restaurants.length === 0) return res.status(404).send('Restaurant not found.');
 
+        const uploadResult = await runMenuImageUpload(req, res);
+        const uploadedFile = req.file || null;
+
         const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
         const rawDescription = typeof req.body?.description === 'string' ? req.body.description : '';
         const rawPrice = typeof req.body?.price === 'string' ? req.body.price : '';
+        const shouldRemoveImage = req.body?.removeImage === '1' || req.body?.removeImage === 'true';
 
         const renderMenuError = async (message) => {
+            cleanupMenuUploadedFile(uploadedFile);
             const [menuItems] = await db.query(
                 'SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id ASC',
                 [restaurantId]
@@ -1281,31 +1367,24 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/update', async (req, res
                 menuItems,
                 statusMessage: null,
                 errorMessage: message,
-                failedUpdateItem: {
-                    itemId,
-                    name: rawName,
-                    description: rawDescription,
-                    price: rawPrice
-                }
+                failedUpdateItem: { itemId, name: rawName, description: rawDescription, price: rawPrice }
             });
         };
 
-        const nameCheck = validateTextField(rawName, {
-            label: 'Dish name',
-            required: true,
-            min: 2,
-            max: 100
-        });
+        if (!uploadResult.ok) {
+            return renderMenuError(uploadResult.error);
+        }
+
+        if (uploadedFile && typeof uploadedFile.size === 'number' && uploadedFile.size > MAX_MENU_IMAGE_SIZE_BYTES) {
+            return renderMenuError('Dish image size exceeds the 3 MB limit.');
+        }
+
+        const nameCheck = validateTextField(rawName, { label: 'Dish name', required: true, min: 2, max: 100 });
         if (!nameCheck.ok) {
             return renderMenuError(nameCheck.error);
         }
 
-        const descCheck = validateTextField(rawDescription || '', {
-            label: 'Dish description',
-            required: false,
-            min: 0,
-            max: 500
-        });
+        const descCheck = validateTextField(rawDescription || '', { label: 'Dish description', required: false, min: 0, max: 500 });
         if (!descCheck.ok) {
             return renderMenuError(descCheck.error);
         }
@@ -1321,15 +1400,41 @@ app.post('/owner/restaurants/:restaurantId/menu/:itemId/update', async (req, res
         }
 
         const [items] = await db.query(
-            'SELECT id FROM menu_items WHERE id = ? AND restaurant_id = ?',
+            'SELECT * FROM menu_items WHERE id = ? AND restaurant_id = ?',
             [itemId, restaurantId]
         );
-        if (items.length === 0) return res.status(404).send('Menu item not found.');
+        if (items.length === 0) {
+            cleanupMenuUploadedFile(uploadedFile);
+            return res.status(404).send('Menu item not found.');
+        }
 
-        await db.query(
-            'UPDATE menu_items SET name = ?, description = ?, price = ? WHERE id = ? AND restaurant_id = ?',
-            [nameCheck.value, descCheck.value || null, price, itemId, restaurantId]
-        );
+        const currentItem = items[0];
+        const existingImage = currentItem.image || currentItem.image_url || null;
+        const newImagePath = normalizeMenuImagePath(uploadedFile);
+
+        let finalImage = existingImage;
+        if (newImagePath) {
+            finalImage = newImagePath;
+        } else if (shouldRemoveImage) {
+            finalImage = null;
+        }
+
+        try {
+            await db.query(
+                'UPDATE menu_items SET name = ?, description = ?, price = ?, image = ? WHERE id = ? AND restaurant_id = ?',
+                [nameCheck.value, descCheck.value || null, price, finalImage, itemId, restaurantId]
+            );
+        } catch (dbErr) {
+            if (/Unknown column 'image'/i.test(dbErr.message || '')) {
+                await db.query(
+                    'UPDATE menu_items SET name = ?, description = ?, price = ?, image_url = ? WHERE id = ? AND restaurant_id = ?',
+                    [nameCheck.value, descCheck.value || null, price, finalImage, itemId, restaurantId]
+                );
+            } else {
+                cleanupMenuUploadedFile(uploadedFile);
+                throw dbErr;
+            }
+        }
 
         return res.redirect(`/owner/restaurants/${restaurantId}/menu?status=updated`);
     } catch (err) {
@@ -1652,6 +1757,20 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
+function validateUsernameServer(rawUsername) {
+    const value = typeof rawUsername === 'string' ? rawUsername.trim() : '';
+    if (!value) {
+        return 'Username is required.';
+    }
+    if (value.length > 30) {
+        return 'Username must be 30 characters or fewer.';
+    }
+    if (!/^[\p{L}]/u.test(value)) {
+        return 'Username cannot start with a number or symbol.';
+    }
+    return '';
+}
+
 app.post('/profile/update', handleAvatarUpload, async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -1661,12 +1780,24 @@ app.post('/profile/update', handleAvatarUpload, async (req, res) => {
         if (users.length === 0) return res.redirect('/');
 
         const currentUser = users[0];
-        const nextUsername =
-            typeof req.body?.username === 'string' && req.body.username.trim()
-                ? req.body.username.trim()
-                : currentUser.username;
+        const targetRedirect =
+            currentUser.role === 'admin'
+                ? '/admin'
+                : currentUser.role === 'owner'
+                    ? '/owner-dashboard'
+                    : '/profile';
 
+        const rawUsername = typeof req.body?.username === 'string' ? req.body.username : '';
+        const usernameError = validateUsernameServer(rawUsername);
+        if (usernameError) {
+            return res.redirect(
+                `${targetRedirect}?error=${encodeURIComponent(usernameError)}&profileError=${encodeURIComponent(usernameError)}`
+            );
+        }
+
+        const nextUsername = rawUsername.trim();
         let avatarPath = currentUser.avatar;
+
         if (req.file) {
             if (req.file.size > MAX_IMAGE_SIZE_BYTES) {
                 return res.status(400).send('Image size must not exceed 3 MB.');
@@ -1679,8 +1810,7 @@ app.post('/profile/update', handleAvatarUpload, async (req, res) => {
             [nextUsername, avatarPath, userEmail]
         );
 
-        if (currentUser.role === 'admin') return res.redirect('/admin');
-        return res.redirect('/profile');
+        return res.redirect(targetRedirect);
     } catch (err) {
         console.error(err);
         return res.status(500).send('Server error during profile update');
@@ -1999,10 +2129,6 @@ async function renderNotificationsPage(req, res, requiredRole) {
         return res.status(500).send('Server error');
     }
 }
-
-app.get('/owner-notifications', (req, res) => renderNotificationsPage(req, res, 'owner'));
-
-app.get('/customer-notifications', (req, res) => renderNotificationsPage(req, res, 'customer'));
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running at: http://localhost:${PORT}`);
