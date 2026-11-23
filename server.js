@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
-const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024; // 3 MB
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024;
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
