@@ -1647,21 +1647,32 @@ app.get('/admin', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
         let currentUser = null;
+
         if (userEmail) {
             const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
-            if (users.length > 0) currentUser = users[0];
+            if (users.length > 0) {
+                currentUser = users[0];
+            }
         }
 
         if (currentUser && currentUser.role === 'admin') {
             const [allUsers] = await db.query('SELECT * FROM users');
             const [allRestaurants] = await db.query('SELECT * FROM restaurants');
             const [allReviews] = await db.query(`
-                SELECT reviews.*, users.username, restaurants.name as restaurant_name 
-                FROM reviews JOIN users ON reviews.user_id = users.id 
-                JOIN restaurants ON reviews.restaurant_id = restaurants.id
-            `);
-            return res.render('admin', { currentUser, users: allUsers, restaurants: allRestaurants, reviews: allReviews });
+        SELECT reviews.*, users.username, restaurants.name AS restaurant_name
+        FROM reviews
+        JOIN users ON reviews.user_id = users.id
+        JOIN restaurants ON reviews.restaurant_id = restaurants.id
+      `);
+
+            return res.render('admin', {
+                currentUser,
+                users: allUsers,
+                restaurants: allRestaurants,
+                reviews: allReviews
+            });
         }
+
         res.render('admin-login', { error: null, currentUser: null });
     } catch (err) {
         console.error(err);
@@ -1671,18 +1682,36 @@ app.get('/admin', async (req, res) => {
 
 app.post('/admin', async (req, res) => {
     const { email, password } = req.body;
+
     try {
-        const [users] = await db.query('SELECT * FROM users WHERE email = ? AND password = ? AND role = "admin"', [email, password]);
+        const [users] = await db.query(
+            'SELECT * FROM users WHERE email = ? AND role = "admin"',
+            [email]
+        );
+
         if (users.length > 0) {
-            if (users[0].is_blocked) {
-                return res.render('admin-login', { error: 'Your account has been blocked.', currentUser: null });
+            const adminUser = users[0];
+            const isPasswordValid = await bcrypt.compare(password, adminUser.password);
+
+            if (!isPasswordValid) {
+                return res.render('admin-login', {
+                    error: 'Invalid admin credentials!',
+                    currentUser: null
+                });
             }
 
-            res.cookie('user_email', email, { maxAge: 24 * 60 * 60 * 1000 });
-            res.redirect('/admin');
-        } else {
-            res.render('admin-login', { error: 'Invalid admin credentials!', currentUser: null });
+            if (adminUser.is_blocked) {
+                return res.render('admin-login', {
+                    error: 'Your account has been blocked.',
+                    currentUser: null
+                });
+            }
+
+            res.cookie('user_email', adminUser.email, { maxAge: 24 * 60 * 60 * 1000 });
+            return res.redirect('/admin');
         }
+
+        res.render('admin-login', { error: 'Invalid admin credentials!', currentUser: null });
     } catch (err) {
         console.error(err);
         res.render('admin-login', { error: 'Server error', currentUser: null });
