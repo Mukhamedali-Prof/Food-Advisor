@@ -314,48 +314,6 @@ async function deleteUserCascade(userId) {
     }
 }
 
-async function getNotificationsForUser(user) {
-    const items = [];
-
-    try {
-        const [hiddenRestaurants] = await db.query(
-            'SELECT name FROM restaurants WHERE owner_id = ? AND is_hidden = 1',
-            [user.id]
-        );
-        hiddenRestaurants.forEach((r) => items.push({
-            type: 'restaurant_hidden',
-            message: `Your restaurant "${r.name}" has been hidden from the service for violating the service rules.`,
-            date: null
-        }));
-
-        const [hiddenReviews] = await db.query(`
-            SELECT restaurants.name AS restaurant_name
-            FROM reviews
-            JOIN restaurants ON reviews.restaurant_id = restaurants.id
-            WHERE reviews.user_id = ? AND reviews.is_hidden = 1
-        `, [user.id]);
-        hiddenReviews.forEach((r) => items.push({
-            type: 'review_hidden',
-            message: `Your review of "${r.restaurant_name}" has been hidden for violating the service rules.`,
-            date: null
-        }));
-    } catch (err) {
-        console.error('Failed to load hidden-item notifications:', err);
-    }
-
-    try {
-        const [saved] = await db.query(
-            'SELECT type, message, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC',
-            [user.id]
-        );
-        saved.forEach((n) => items.push({ type: n.type, message: n.message, date: n.created_at }));
-    } catch (err) {
-        console.error('Failed to load saved notifications:', err);
-    }
-
-    return items;
-}
-
 app.get('/', async (req, res) => {
     try {
         const userEmail = req.cookies.user_email;
@@ -2322,23 +2280,6 @@ app.post('/profile/security', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-
-async function renderNotificationsPage(req, res, requiredRole) {
-    try {
-        const userEmail = req.cookies.user_email;
-        if (!userEmail) return res.redirect('/?modal=login');
-
-        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [userEmail]);
-        if (users.length === 0 || users[0].role !== requiredRole) return res.redirect('/');
-        const currentUser = users[0];
-
-        const notifications = await getNotificationsForUser(currentUser);
-        return res.render('notifications', { currentUser, notifications });
-    } catch (err) {
-        console.error('Failed to load notifications page:', err);
-        return res.status(500).send('Server error');
-    }
-}
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running at: http://localhost:${PORT}`);

@@ -24,9 +24,6 @@
                             <%= restaurant.address %>
                         </p>
                     </div>
-                    <div class="info-row">
-                        <p><strong>Working Hours:</strong> 10:00 AM - 11:00 PM</p>
-                    </div>
                     <% if (restaurant.description) { %>
                         <div class="info-row">
                             <p><strong>Description:</strong>
@@ -42,8 +39,9 @@
                                     ) { %>
                                     <form action="/favorites/toggle/<%= restaurant.id %>" method="POST"
                                         style="display: inline-block; margin-top: 10px;">
-                                        <button type="submit" class="btn-secondary"
-                                            style="width: 240px; text-align: center; font-weight: bold; background: <%= isFavorite ? '#fff' : '#ffc800' %>; color: #000;">
+                                        <button type="submit"
+                                            class="<%= isFavorite ? 'btn-secondary' : 'btn-primary' %>"
+                                            style="min-width: 210px; white-space: nowrap;">
                                             <%= isFavorite ? 'Remove from Favorites' : 'Add to Favorites' %>
                                         </button>
                                     </form>
