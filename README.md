@@ -77,6 +77,8 @@ Use email "admin@example.com" and password "Admin123!"
 
 The application implements role-based access control across three user roles:
 
+GitHub link - https://github.com/Mukhamedali-Prof/Food-Advisor/
+
 * **Customer:**
   * Register, log in, and manage personal profile details and avatar.
   * Browse, search, and filter restaurants by cuisine, location, rating, and price range.
